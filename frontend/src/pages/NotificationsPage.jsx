@@ -169,6 +169,12 @@ const NotificationsPage = () => {
               <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                 Analytics
               </Link>
+              <Link to="/job-search" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                Job Search
+              </Link>
+              <Link to="/ai-analyzer" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                AI Analyzer
+              </Link>
               <Link to="/settings" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                 Settings
               </Link>

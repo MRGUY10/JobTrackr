@@ -13,6 +13,8 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import CalendarPage from './pages/CalendarPage';
+import JobSearchPage from './pages/JobSearchPage';
+import AIJobAnalyzerPage from './pages/AIJobAnalyzerPage';
 
 function App() {
   return (
@@ -31,6 +33,8 @@ function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/job-search" element={<JobSearchPage />} />
+        <Route path="/ai-analyzer" element={<AIJobAnalyzerPage />} />
       </Routes>
     </Router>
   );
