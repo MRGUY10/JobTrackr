@@ -193,14 +193,19 @@ const ApplicationsListPage = () => {
               <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                 Analytics
               </Link>
+              <Link to="/settings" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                Settings
+              </Link>
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <UserCircleIcon className="h-8 w-8 text-gray-600 cursor-pointer hover:text-gray-900" />
+              </Link>
+              <Link to="/profile">
+                <UserCircleIcon className="h-8 w-8 text-primary-600 cursor-pointer hover:text-primary-700" />
+              </Link>
             </div>
           </div>
         </div>

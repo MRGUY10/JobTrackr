@@ -145,37 +145,21 @@ const DashboardPage = () => {
               <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                 Analytics
               </Link>
+              <Link to="/settings" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                Settings
+              </Link>
             </div>
 
             {/* Right Side Icons */}
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+              <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              </Link>
               
-              <div className="relative group">
-                <button className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <UserCircleIcon className="h-8 w-8 text-gray-600" />
-                </button>
-                
-                {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-t-lg transition-colors">
-                    <UserCircleIcon className="h-5 w-5" />
-                    Profile
-                  </Link>
-                  <Link to="/settings" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors">
-                    <Cog6ToothIcon className="h-5 w-5" />
-                    Settings
-                  </Link>
-                  <hr className="my-1" />
-                  <button className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-b-lg transition-colors w-full text-left">
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                    Logout
-                  </button>
-                </div>
-              </div>
+              <Link to="/profile" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
+              </Link>
             </div>
           </div>
         </div>
