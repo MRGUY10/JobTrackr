@@ -12,6 +12,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationsPage from './pages/NotificationsPage';
+import CalendarPage from './pages/CalendarPage';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
       </Routes>
     </Router>
   );
