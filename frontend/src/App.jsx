@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ApplicationsListPage from './pages/ApplicationsListPage';
 import AddApplicationPage from './pages/AddApplicationPage';
 import KanbanPage from './pages/KanbanPage';
+import DocumentsPage from './pages/DocumentsPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/applications" element={<ApplicationsListPage />} />
         <Route path="/applications/new" element={<AddApplicationPage />} />
         <Route path="/kanban" element={<KanbanPage />} />
+        <Route path="/documents" element={<DocumentsPage />} />
       </Routes>
     </Router>
   );
