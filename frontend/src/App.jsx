@@ -8,6 +8,7 @@ import ApplicationsListPage from './pages/ApplicationsListPage';
 import AddApplicationPage from './pages/AddApplicationPage';
 import KanbanPage from './pages/KanbanPage';
 import DocumentsPage from './pages/DocumentsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/applications/new" element={<AddApplicationPage />} />
         <Route path="/kanban" element={<KanbanPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
       </Routes>
     </Router>
   );
