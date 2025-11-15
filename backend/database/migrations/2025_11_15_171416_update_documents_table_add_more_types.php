@@ -11,8 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // PostgreSQL compatible: Drop and recreate the column
         Schema::table('documents', function (Blueprint $table) {
-            $table->enum('type', ['cv', 'cover_letter', 'portfolio', 'certificate', 'reference', 'other'])->default('other')->change();
+            $table->dropColumn('type');
+        });
+        
+        Schema::table('documents', function (Blueprint $table) {
+            $table->string('type', 255)->default('other')->after('user_id');
         });
     }
 
@@ -22,7 +27,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('documents', function (Blueprint $table) {
-            $table->enum('type', ['cv', 'cover_letter', 'other'])->default('other')->change();
+            $table->dropColumn('type');
+        });
+        
+        Schema::table('documents', function (Blueprint $table) {
+            $table->string('type', 255)->default('other')->after('user_id');
         });
     }
 };
