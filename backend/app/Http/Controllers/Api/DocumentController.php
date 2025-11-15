@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\DocumentResource;
 use App\Models\Application;
 use App\Models\Document;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -67,6 +68,9 @@ class DocumentController extends Controller
             'original_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
         ]);
+
+        // Send notification
+        NotificationService::documentUploaded($application, $document);
 
         return response()->json([
             'message' => 'Document uploaded successfully',

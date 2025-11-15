@@ -7,6 +7,7 @@ use App\Http\Requests\StoreApplicationRequest;
 use App\Http\Requests\UpdateApplicationRequest;
 use App\Http\Resources\ApplicationResource;
 use App\Models\Application;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -126,6 +127,9 @@ class ApplicationController extends Controller
         
         $application = Application::create($data);
 
+        // Send notification
+        NotificationService::applicationCreated($application);
+
         return response()->json([
             'message' => 'Application created successfully',
             'data' => new ApplicationResource($application),
@@ -207,7 +211,18 @@ class ApplicationController extends Controller
     )]
     public function update(UpdateApplicationRequest $request, Application $application): JsonResponse
     {
+        $oldStatus = $application->status;
         $application->update($request->validated());
+
+        // Send status change notification if status changed
+        if ($request->has('status') && $oldStatus !== $request->status) {
+            NotificationService::applicationStatusChanged($application, $oldStatus);
+        }
+
+        // Send interview scheduled notification if interview_date was set
+        if ($request->has('interview_date') && !$application->getOriginal('interview_date')) {
+            NotificationService::interviewScheduled($application);
+        }
 
         return response()->json([
             'message' => 'Application updated successfully',

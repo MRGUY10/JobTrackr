@@ -1,4 +1,83 @@
-# Release Notes
+# JobTrackr - Change Log
+
+## Version 1.2.0 - Comprehensive Notification System (November 15, 2025)
+
+### Added - Notification System
+- **10 Notification Types**: application_status_changed, interview_scheduled, interview_reminder, document_uploaded, application_created, application_deadline_approaching, follow_up_reminder, job_posting_new, system, general
+- **Email Integration**: Automatic email notifications with Gmail SMTP support
+- **Professional Email Templates**: 8 blade templates (HTML + text versions) with JobTrackr branding
+- **NotificationService**: Comprehensive backend service with 11 methods for creating and sending notifications
+- **Email Mailable Classes**: 4 mailable classes for different notification categories
+- **Automatic Triggers**: Notifications sent automatically when:
+  - Application is created
+  - Application status changes
+  - Interview is scheduled
+  - Document is uploaded
+- **Scheduled Reminders**: Daily automated reminders via Laravel scheduler:
+  - Interview reminders (1 day before)
+  - Deadline warnings (3 days before)
+  - Follow-up reminders (7 days after applying)
+- **Enhanced Database**: New notifications table with metadata JSON, email tracking, polymorphic relations, and action URLs
+- **Frontend Integration**: Complete NotificationsPage with:
+  - 10 notification type support with emoji icons and colors
+  - Filter by all/unread/read
+  - Search functionality
+  - Mark as read / Mark all as read
+  - Delete notifications
+  - Email sent indicators
+  - Statistics footer
+- **Frontend Service**: notificationService.js for API integration and helper functions
+- **Scheduled Command**: SendNotificationReminders command for automated reminder delivery
+- **Documentation**: Comprehensive NOTIFICATION_SYSTEM.md guide
+
+### Enhanced
+- **Notification Model**: Updated with new fillable fields (metadata, email_sent, related_type, related_id, action_url)
+- **ApplicationController**: Integrated NotificationService for automatic notifications
+- **DocumentController**: Integrated NotificationService for document upload notifications
+- **Laravel Scheduler**: Configured to run notification reminders daily at 9 AM
+
+### Technical Details
+- Migration: `2025_11_15_181316_enhance_notifications_table.php`
+- Service: `app/Services/NotificationService.php` (300+ lines)
+- Commands: `app/Console/Commands/SendNotificationReminders.php`
+- Email Templates: `resources/views/emails/` (8 templates)
+- Frontend Service: `src/services/notificationService.js`
+- Frontend Page: `src/pages/NotificationsPage.jsx` (updated)
+
+---
+
+## Version 1.1.0 - Job Management System (November 14, 2025)
+
+### Added
+- Job Postings Management (Admin)
+- Public Job Search API endpoint
+- JobPosting model and migration
+- AdminJobsPage with create/edit/delete functionality
+- JobSearchPage updated to fetch real backend data
+
+---
+
+## Version 1.0.0 - Initial Release (November 13, 2025)
+
+### Added
+- Authentication system with Laravel Sanctum
+- User registration and login with email verification
+- Profile management with photo upload
+- Application tracking (CRUD operations)
+- Kanban board with drag-and-drop
+- Document management (6 document types)
+- Analytics dashboard with charts
+- Admin panel with role-based access
+- AdminMiddleware for route protection
+- Admin dashboard, users management, applications management
+- Mobile-responsive navigation
+- Complete frontend with 17 pages
+- Backend API with 40+ endpoints
+- Swagger API documentation
+
+---
+
+# Laravel Framework Release Notes
 
 ## [Unreleased](https://github.com/laravel/laravel/compare/v12.10.0...12.x)
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import notificationService from '../services/notificationService';
 import { 
   BellIcon,
   UserCircleIcon,
@@ -24,134 +25,88 @@ const NotificationsPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'success',
-      title: 'Application Status Updated',
-      message: 'Your application at Google LLC has been moved to Interview stage.',
-      timestamp: '2 hours ago',
-      read: false,
-      link: '/applications'
-    },
-    {
-      id: 2,
-      type: 'info',
-      title: 'Interview Reminder',
-      message: 'You have a technical interview scheduled with Microsoft tomorrow at 10:00 AM.',
-      timestamp: '3 hours ago',
-      read: false,
-      link: '/dashboard'
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'New Offer Received',
-      message: 'Congratulations! You received an offer from Meta for React Developer position.',
-      timestamp: '1 day ago',
-      read: true,
-      link: '/applications'
-    },
-    {
-      id: 4,
-      type: 'warning',
-      title: 'Document Expiring Soon',
-      message: 'Your resume will expire in 30 days. Please update it to keep your profile fresh.',
-      timestamp: '2 days ago',
-      read: true,
-      link: '/documents'
-    },
-    {
-      id: 5,
-      type: 'info',
-      title: 'Weekly Summary',
-      message: 'This week you applied to 5 jobs, had 2 interviews, and received 1 offer.',
-      timestamp: '3 days ago',
-      read: true,
-      link: '/analytics'
-    },
-    {
-      id: 6,
-      type: 'error',
-      title: 'Application Rejected',
-      message: 'Unfortunately, your application at Amazon has been rejected.',
-      timestamp: '4 days ago',
-      read: true,
-      link: '/applications'
-    },
-    {
-      id: 7,
-      type: 'success',
-      title: 'Profile Viewed',
-      message: '3 recruiters viewed your profile this week.',
-      timestamp: '5 days ago',
-      read: true,
-      link: '/profile'
-    },
-    {
-      id: 8,
-      type: 'info',
-      title: 'New Feature Available',
-      message: 'Check out our new AI-powered job analyzer to improve your applications.',
-      timestamp: '1 week ago',
-      read: true,
-      link: '/dashboard'
-    }
-  ]);
+  // Fetch notifications on component mount
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
-  const [filter, setFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const getIconAndColor = (type) => {
-    switch (type) {
-      case 'success':
-        return { icon: CheckCircleIcon, color: 'text-green-600', bg: 'bg-green-100' };
-      case 'error':
-        return { icon: XCircleIcon, color: 'text-red-600', bg: 'bg-red-100' };
-      case 'warning':
-        return { icon: ExclamationTriangleIcon, color: 'text-yellow-600', bg: 'bg-yellow-100' };
-      case 'info':
-      default:
-        return { icon: InformationCircleIcon, color: 'text-blue-600', bg: 'bg-blue-100' };
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await notificationService.getAllNotifications();
+      setNotifications(response.data || []);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setError('Failed to load notifications. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const markAsRead = (id) => {
-    setNotifications(prev => 
-      prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
-    );
+  const markAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev => 
+        prev.map(notif => notif.id === id ? { ...notif, read_at: new Date().toISOString() } : notif)
+      );
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(notif => ({ ...notif, read_at: new Date().toISOString() })));
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  const deleteNotification = async (id) => {
+    try {
+      await notificationService.deleteNotification(id);
+      setNotifications(prev => prev.filter(notif => notif.id !== id));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
     if (window.confirm('Are you sure you want to clear all notifications?')) {
-      setNotifications([]);
+      try {
+        // Delete all notifications one by one
+        await Promise.all(notifications.map(n => notificationService.deleteNotification(n.id)));
+        setNotifications([]);
+      } catch (err) {
+        console.error('Error clearing notifications:', err);
+      }
     }
   };
 
   const filteredNotifications = notifications.filter(notif => {
+    const isRead = notif.read_at !== null;
     const matchesFilter = filter === 'all' || 
-                          (filter === 'unread' && !notif.read) || 
-                          (filter === 'read' && notif.read);
+                          (filter === 'unread' && !isRead) || 
+                          (filter === 'read' && isRead);
     const matchesSearch = notif.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           notif.message.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => n.read_at === null).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -417,7 +372,31 @@ const NotificationsPage = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading notifications...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <XCircleIcon className="h-12 w-12 text-red-600 mx-auto mb-4" />
+            <p className="text-red-800 font-semibold mb-2">Error Loading Notifications</p>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={fetchNotifications}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* Notifications List */}
+        {!isLoading && !error && (
         <div className="space-y-3">
           {filteredNotifications.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
@@ -433,26 +412,35 @@ const NotificationsPage = () => {
             </div>
           ) : (
             filteredNotifications.map((notification) => {
-              const { icon: Icon, color, bg } = getIconAndColor(notification.type);
+              const style = notificationService.getNotificationStyle(notification.type);
+              const isRead = notification.read_at !== null;
               
               return (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl shadow-sm border border-gray-200 p-5 transition-all hover:shadow-md ${
-                    !notification.read ? 'bg-blue-50 border-blue-200' : ''
+                  className={`bg-white rounded-xl shadow-sm border p-5 transition-all hover:shadow-md ${
+                    !isRead ? `${style.bgColor} ${style.borderColor}` : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <Icon className={`h-6 w-6 ${color}`} />
+                    <div className={`w-12 h-12 ${style.bgColor} rounded-lg flex items-center justify-center flex-shrink-0 text-2xl`}>
+                      {style.icon}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4 mb-1">
-                        <h3 className="font-semibold text-gray-900">{notification.title}</h3>
-                        {!notification.read && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{notification.title}</h3>
+                          {notification.email_sent && (
+                            <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-1">
+                              <EnvelopeIcon className="h-3 w-3" />
+                              Email sent
+                            </span>
+                          )}
+                        </div>
+                        {!isRead && (
                           <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-2"></span>
                         )}
                       </div>
@@ -460,29 +448,29 @@ const NotificationsPage = () => {
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-4 w-4" />
-                          {notification.timestamp}
+                          {notificationService.formatNotificationTime(notification.created_at)}
                         </div>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {notification.link && (
+                      {notification.action_url && (
                         <Link
-                          to={notification.link}
+                          to={notification.action_url}
                           className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                           title="View details"
                         >
                           <EyeIcon className="h-5 w-5" />
                         </Link>
                       )}
-                      {!notification.read && (
+                      {!isRead && (
                         <button
                           onClick={() => markAsRead(notification.id)}
                           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                           title="Mark as read"
                         >
-                          <EnvelopeIcon className="h-5 w-5" />
+                          <CheckCircleIcon className="h-5 w-5" />
                         </button>
                       )}
                       <button
@@ -499,9 +487,10 @@ const NotificationsPage = () => {
             })
           )}
         </div>
+        )}
 
         {/* Stats Footer */}
-        {notifications.length > 0 && (
+        {!isLoading && !error && notifications.length > 0 && (
           <div className="mt-8 bg-gradient-to-r from-primary-600 to-purple-600 rounded-xl p-6 text-white">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
@@ -513,12 +502,12 @@ const NotificationsPage = () => {
                 <p className="text-primary-100 text-sm mt-1">Unread</p>
               </div>
               <div>
-                <div className="text-3xl font-bold">{notifications.filter(n => n.type === 'success').length}</div>
-                <p className="text-primary-100 text-sm mt-1">Success</p>
+                <div className="text-3xl font-bold">{notifications.filter(n => n.type === 'application_status_changed' || n.type === 'interview_scheduled').length}</div>
+                <p className="text-primary-100 text-sm mt-1">Application Updates</p>
               </div>
               <div>
-                <div className="text-3xl font-bold">{notifications.filter(n => n.type === 'warning' || n.type === 'error').length}</div>
-                <p className="text-primary-100 text-sm mt-1">Alerts</p>
+                <div className="text-3xl font-bold">{notifications.filter(n => n.type === 'interview_reminder' || n.type === 'application_deadline_approaching').length}</div>
+                <p className="text-primary-100 text-sm mt-1">Reminders</p>
               </div>
             </div>
           </div>

@@ -18,6 +18,11 @@ class Notification extends Model
         'message',
         'type',
         'read_at',
+        'metadata',
+        'email_sent',
+        'related_type',
+        'related_id',
+        'action_url',
     ];
 
     /**
@@ -29,6 +34,8 @@ class Notification extends Model
     {
         return [
             'read_at' => 'datetime',
+            'metadata' => 'array',
+            'email_sent' => 'boolean',
         ];
     }
 
