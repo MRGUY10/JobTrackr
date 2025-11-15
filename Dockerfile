@@ -14,10 +14,13 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev \
     oniguruma-dev \
-    libxml2-dev
+    libxml2-dev \
+    icu-dev \
+    icu-data-full
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure intl \
     && docker-php-ext-install -j$(nproc) \
     pdo_pgsql \
     pgsql \
@@ -26,7 +29,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     pcntl \
     bcmath \
     gd \
-    opcache
+    opcache \
+    intl
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -41,8 +45,8 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 COPY backend/ ./
 RUN composer dump-autoload --optimize
 
-# Remove .env file - we'll use environment variables from Render
-RUN rm -f .env
+# Use production .env file
+RUN cp .env.production .env
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
