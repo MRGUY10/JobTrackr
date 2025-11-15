@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import applicationService from '../services/applicationService';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -13,7 +14,8 @@ import {
   MapPinIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
@@ -61,17 +63,14 @@ const SortableApplicationCard = ({ application }) => {
 
       <div className="space-y-2 text-xs text-gray-600">
         <div className="flex items-center gap-2">
-          <MapPinIcon className="h-3.5 w-3.5" />
-          <span>{application.location}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <BanknotesIcon className="h-3.5 w-3.5" />
-          <span className="font-medium text-gray-900">{application.salary}</span>
-        </div>
-        <div className="flex items-center gap-2">
           <CalendarIcon className="h-3.5 w-3.5" />
-          <span>{new Date(application.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          <span>{new Date(application.applied_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </div>
+        {application.job_url && (
+          <a href={application.job_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary-600 hover:underline">
+            View Job
+          </a>
+        )}
       </div>
 
       {application.notes && (
@@ -138,6 +137,28 @@ const KanbanPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    fetchApplications();
+  }, []);
+
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await applicationService.getApplications();
+      setApplications(data.data || []);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+      setError(err.response?.data?.message || 'Failed to load applications');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -152,132 +173,25 @@ const KanbanPage = () => {
     })
   );
 
-  // Mock data - replace with API
-  const [applications, setApplications] = useState({
-    wishlist: [
-      {
-        id: 'app-1',
-        company: 'Tesla',
-        position: 'Frontend Developer',
-        status: 'wishlist',
-        appliedDate: '2025-10-20',
-        salary: '$100k - $130k',
-        location: 'On-site',
-        logo: '⚡',
-        notes: 'Planning to apply next week'
-      },
-      {
-        id: 'app-2',
-        company: 'Airbnb',
-        position: 'UI Engineer',
-        status: 'wishlist',
-        appliedDate: '2025-10-18',
-        salary: '$110k - $145k',
-        location: 'Remote',
-        logo: '🏠',
-        notes: 'Great culture and benefits'
-      }
-    ],
-    applied: [
-      {
-        id: 'app-3',
-        company: 'Microsoft',
-        position: 'Full Stack Engineer',
-        status: 'applied',
-        appliedDate: '2025-11-08',
-        salary: '$110k - $140k',
-        location: 'Hybrid',
-        logo: '🟢',
-        notes: 'Waiting for response'
-      },
-      {
-        id: 'app-4',
-        company: 'Amazon',
-        position: 'Software Development Engineer',
-        status: 'applied',
-        appliedDate: '2025-11-03',
-        salary: '$115k - $145k',
-        location: 'Remote',
-        logo: '🟠',
-        notes: 'Applied through referral'
-      },
-      {
-        id: 'app-5',
-        company: 'Spotify',
-        position: 'UI/UX Engineer',
-        status: 'applied',
-        appliedDate: '2025-10-22',
-        salary: '$105k - $135k',
-        location: 'Hybrid',
-        logo: '🟢',
-        notes: 'Portfolio submitted'
-      }
-    ],
-    interview: [
-      {
-        id: 'app-6',
-        company: 'Google LLC',
-        position: 'Senior Frontend Developer',
-        status: 'interview',
-        appliedDate: '2025-11-10',
-        salary: '$120k - $150k',
-        location: 'Remote',
-        logo: '🔵',
-        notes: 'Technical round scheduled for Nov 16'
-      },
-      {
-        id: 'app-7',
-        company: 'Netflix',
-        position: 'Senior Software Engineer',
-        status: 'interview',
-        appliedDate: '2025-10-25',
-        salary: '$140k - $170k',
-        location: 'Remote',
-        logo: '🔴',
-        notes: 'Second round next week'
-      }
-    ],
-    offer: [
-      {
-        id: 'app-8',
-        company: 'Meta',
-        position: 'React Developer',
-        status: 'offer',
-        appliedDate: '2025-11-05',
-        salary: '$130k - $160k',
-        location: 'On-site',
-        logo: '🔷',
-        notes: 'Offer received, need to respond by Nov 20'
-      }
-    ],
-    rejected: [
-      {
-        id: 'app-9',
-        company: 'Apple',
-        position: 'iOS Developer',
-        status: 'rejected',
-        appliedDate: '2025-10-28',
-        salary: '$125k - $155k',
-        location: 'On-site',
-        logo: '⚪',
-        notes: 'Not selected after technical round'
-      }
-    ]
-  });
-
   const columns = [
-    { id: 'wishlist', title: 'Wishlist', color: 'bg-gray-400' },
-    { id: 'applied', title: 'Applied', color: 'bg-blue-500' },
-    { id: 'interview', title: 'Interview', color: 'bg-purple-500' },
-    { id: 'offer', title: 'Offer', color: 'bg-green-500' },
-    { id: 'rejected', title: 'Rejected', color: 'bg-red-500' }
+    { id: 'Applied', title: 'Applied', color: 'bg-blue-500' },
+    { id: 'Interview', title: 'Interview', color: 'bg-purple-500' },
+    { id: 'Technical Test', title: 'Technical Test', color: 'bg-yellow-500' },
+    { id: 'Offer', title: 'Offer', color: 'bg-green-500' },
+    { id: 'Rejected', title: 'Rejected', color: 'bg-red-500' }
   ];
+
+  // Group applications by status
+  const groupedApplications = columns.reduce((acc, column) => {
+    acc[column.id] = applications.filter(app => app.status === column.id);
+    return acc;
+  }, {});
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     const { active, over } = event;
 
     if (!over) {
@@ -285,13 +199,12 @@ const KanbanPage = () => {
       return;
     }
 
-    // Find source column
-    let sourceColumn = null;
-    Object.keys(applications).forEach(columnId => {
-      if (applications[columnId].find(app => app.id === active.id)) {
-        sourceColumn = columnId;
-      }
-    });
+    // Find the application being dragged
+    const draggedApp = applications.find(app => app.id === active.id);
+    if (!draggedApp) {
+      setActiveId(null);
+      return;
+    }
 
     // Find destination column
     let destColumn = null;
@@ -303,27 +216,33 @@ const KanbanPage = () => {
     
     // If not, check if dropped on another card
     if (!destColumn) {
-      Object.keys(applications).forEach(columnId => {
-        if (applications[columnId].find(app => app.id === over.id)) {
-          destColumn = columnId;
-        }
-      });
+      const targetApp = applications.find(app => app.id === over.id);
+      if (targetApp) {
+        destColumn = targetApp.status;
+      }
     }
 
-    if (sourceColumn && destColumn && sourceColumn !== destColumn) {
-      const sourceApps = [...applications[sourceColumn]];
-      const destApps = [...applications[destColumn]];
+    if (destColumn && draggedApp.status !== destColumn) {
+      // Optimistically update UI
+      const updatedApps = applications.map(app =>
+        app.id === draggedApp.id ? { ...app, status: destColumn } : app
+      );
+      setApplications(updatedApps);
 
-      const appIndex = sourceApps.findIndex(app => app.id === active.id);
-      const [movedApp] = sourceApps.splice(appIndex, 1);
-      movedApp.status = destColumn;
-      destApps.push(movedApp);
-
-      setApplications({
-        ...applications,
-        [sourceColumn]: sourceApps,
-        [destColumn]: destApps
-      });
+      try {
+        // Update in backend
+        await applicationService.updateApplication(draggedApp.id, {
+          ...draggedApp,
+          status: destColumn
+        });
+        setSuccess(`Moved to ${destColumn}`);
+        setTimeout(() => setSuccess(null), 2000);
+      } catch (err) {
+        // Revert on error
+        setApplications(applications);
+        setError(err.response?.data?.message || 'Failed to update status');
+        setTimeout(() => setError(null), 3000);
+      }
     }
 
     setActiveId(null);
@@ -334,9 +253,7 @@ const KanbanPage = () => {
   };
 
   const activeApplication = activeId
-    ? Object.values(applications)
-        .flat()
-        .find(app => app.id === activeId)
+    ? applications.find(app => app.id === activeId)
     : null;
 
   return (
@@ -543,6 +460,39 @@ const KanbanPage = () => {
           </div>
         </div>
 
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            {success}
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No applications yet</h3>
+            <p className="text-gray-600 mb-6">Start tracking your job applications to see them here.</p>
+            <Link 
+              to="/applications"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Your First Application
+            </Link>
+          </div>
+        ) : (
+          <>
         {/* Kanban Board */}
         <DndContext
           sensors={sensors}
@@ -557,7 +507,7 @@ const KanbanPage = () => {
                 key={column.id}
                 status={column.id}
                 title={column.title}
-                applications={applications[column.id]}
+                applications={groupedApplications[column.id]}
                 color={column.color}
               />
             ))}
@@ -589,7 +539,7 @@ const KanbanPage = () => {
             {columns.map((column) => (
               <div key={column.id} className="text-center">
                 <div className={`w-12 h-12 ${column.color} rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold text-xl`}>
-                  {applications[column.id].length}
+                  {groupedApplications[column.id]?.length || 0}
                 </div>
                 <p className="text-sm font-medium text-gray-900">{column.title}</p>
               </div>
@@ -609,6 +559,8 @@ const KanbanPage = () => {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
