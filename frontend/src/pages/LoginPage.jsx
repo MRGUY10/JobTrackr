@@ -62,7 +62,12 @@ const LoginPage = () => {
       
       if (result.success) {
         console.log('Login successful, navigating to dashboard');
-        navigate('/dashboard');
+        // Redirect admin users to admin dashboard, regular users to user dashboard
+        if (result.data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         console.error('Login failed:', result.error);
         setErrors({ submit: result.error });

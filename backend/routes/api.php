@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DocumentController;
@@ -88,5 +89,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/by-status', [StatisticsController::class, 'byStatus']);
         Route::get('/top-companies', [StatisticsController::class, 'topCompanies']);
         Route::get('/recent-activity', [StatisticsController::class, 'recentActivity']);
+    });
+    
+    // Admin Routes (Require Admin Role)
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/users', [AdminController::class, 'users']);
+        Route::get('/applications', [AdminController::class, 'applications']);
+        
+        // Job Postings Management
+        Route::get('/job-postings', [AdminController::class, 'getJobPostings']);
+        Route::post('/job-postings', [AdminController::class, 'createJobPosting']);
+        Route::put('/job-postings/{id}', [AdminController::class, 'updateJobPosting']);
+        Route::delete('/job-postings/{id}', [AdminController::class, 'deleteJobPosting']);
     });
 });

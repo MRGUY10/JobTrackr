@@ -18,6 +18,10 @@ import AIJobAnalyzerPage from './pages/AIJobAnalyzerPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminApplicationsPage from './pages/AdminApplicationsPage';
+import AdminJobsPage from './pages/AdminJobsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -45,6 +49,12 @@ function App() {
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/job-search" element={<ProtectedRoute><JobSearchPage /></ProtectedRoute>} />
         <Route path="/ai-analyzer" element={<ProtectedRoute><AIJobAnalyzerPage /></ProtectedRoute>} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute><AdminUsersPage /></ProtectedRoute>} />
+        <Route path="/admin/applications" element={<ProtectedRoute><AdminApplicationsPage /></ProtectedRoute>} />
+        <Route path="/admin/jobs" element={<ProtectedRoute><AdminJobsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );
