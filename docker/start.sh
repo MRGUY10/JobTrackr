@@ -4,10 +4,23 @@ set -e
 
 echo "Starting JobTrackr application..."
 
+# Verify environment variables are set
+echo "Checking environment variables..."
+echo "DB_CONNECTION: ${DB_CONNECTION}"
+echo "DB_HOST: ${DB_HOST}"
+echo "DB_DATABASE: ${DB_DATABASE}"
+
 # Wait for database to be ready
 echo "Waiting for database connection..."
+MAX_RETRIES=30
+RETRY_COUNT=0
 until php /var/www/html/artisan db:show 2>/dev/null; do
-    echo "Database is unavailable - sleeping"
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "Failed to connect to database after $MAX_RETRIES attempts"
+        exit 1
+    fi
+    echo "Database is unavailable - sleeping (attempt $RETRY_COUNT/$MAX_RETRIES)"
     sleep 2
 done
 

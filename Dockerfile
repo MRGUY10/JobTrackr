@@ -34,11 +34,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy backend files
-COPY backend/ ./
+# Copy backend files (exclude .env)
+COPY backend/composer.json backend/composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+COPY backend/ ./
+RUN composer dump-autoload --optimize
+
+# Remove .env file - we'll use environment variables from Render
+RUN rm -f .env
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
