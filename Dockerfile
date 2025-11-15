@@ -45,8 +45,19 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 COPY backend/ ./
 RUN composer dump-autoload --optimize
 
-# Use production .env file
-RUN cp .env.production .env
+# Create production .env file (environment variables will override these)
+RUN echo "APP_NAME=JobTrackr" > .env && \
+    echo "APP_ENV=production" >> .env && \
+    echo "APP_KEY=" >> .env && \
+    echo "APP_DEBUG=false" >> .env && \
+    echo "LOG_CHANNEL=stack" >> .env && \
+    echo "LOG_LEVEL=error" >> .env && \
+    echo "DB_CONNECTION=pgsql" >> .env && \
+    echo "SESSION_DRIVER=database" >> .env && \
+    echo "QUEUE_CONNECTION=database" >> .env && \
+    echo "CACHE_STORE=database" >> .env && \
+    echo "BROADCAST_CONNECTION=log" >> .env && \
+    echo "FILESYSTEM_DISK=local" >> .env
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
