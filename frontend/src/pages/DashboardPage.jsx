@@ -17,6 +17,8 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import useAuthStore from '../store/authStore';
+import statisticsService from '../services/statisticsService';
+import applicationService from '../services/applicationService';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -24,92 +26,67 @@ const DashboardPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Backend state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({ total: 0, applied: 0, interview: 0, offer: 0, rejected: 0 });
+  const [recentApplications, setRecentApplications] = useState([]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // Mock data - replace with API calls
-  const stats = {
-    total: 48,
-    applied: 15,
-    interview: 8,
-    offer: 3,
-    rejected: 12
+  // Fetch dashboard data
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch stats and recent applications in parallel
+      const [overview, applications] = await Promise.all([
+        statisticsService.getOverview(),
+        applicationService.getApplications({ sort: 'applied_date', order: 'desc' })
+      ]);
+
+      // Set stats from overview
+      setStats({
+        total: overview.total_applications,
+        applied: overview.by_status.applied || 0,
+        interview: overview.by_status.interview || 0,
+        offer: overview.by_status.offer || 0,
+        rejected: overview.by_status.rejected || 0
+      });
+
+      // Set recent applications (top 5)
+      const apps = applications.data || applications;
+      setRecentApplications(apps.slice(0, 5));
+      
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentApplications = [
-    {
-      id: 1,
-      company: 'Google LLC',
-      position: 'Senior Frontend Developer',
-      status: 'interview',
-      appliedDate: '2025-11-10',
-      salary: '$120k - $150k',
-      location: 'Remote',
-      logo: '🔵'
-    },
-    {
-      id: 2,
-      company: 'Microsoft',
-      position: 'Full Stack Engineer',
-      status: 'applied',
-      appliedDate: '2025-11-08',
-      salary: '$110k - $140k',
-      location: 'Hybrid',
-      logo: '🟢'
-    },
-    {
-      id: 3,
-      company: 'Meta',
-      position: 'React Developer',
-      status: 'offer',
-      appliedDate: '2025-11-05',
-      salary: '$130k - $160k',
-      location: 'On-site',
-      logo: '🔷'
-    },
-    {
-      id: 4,
-      company: 'Amazon',
-      position: 'Software Development Engineer',
-      status: 'applied',
-      appliedDate: '2025-11-03',
-      salary: '$115k - $145k',
-      location: 'Remote',
-      logo: '🟠'
-    },
-    {
-      id: 5,
-      company: 'Apple',
-      position: 'iOS Developer',
-      status: 'rejected',
-      appliedDate: '2025-10-28',
-      salary: '$125k - $155k',
-      location: 'On-site',
-      logo: '⚪'
-    }
-  ];
-
-  const upcomingInterviews = [
-    {
-      id: 1,
-      company: 'Google LLC',
-      position: 'Senior Frontend Developer',
-      date: '2025-11-16',
-      time: '10:00 AM',
-      type: 'Technical Interview'
-    },
-    {
-      id: 2,
-      company: 'Spotify',
-      position: 'UI/UX Engineer',
-      date: '2025-11-18',
-      time: '2:00 PM',
-      type: 'HR Round'
-    }
-  ];
+  // Filter upcoming interviews from applications
+  const upcomingInterviews = recentApplications
+    .filter(app => app.status === 'Interview' && app.interview_date)
+    .slice(0, 2)
+    .map(app => ({
+      id: app.id,
+      company: app.company,
+      position: app.position,
+      date: app.interview_date,
+      time: '10:00 AM', // Default time if not stored
+      type: 'Interview'
+    }));
 
   const getStatusColor = (status) => {
     const colors = {
@@ -300,9 +277,26 @@ const DashboardPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, John! 👋</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {user?.name || 'User'}! 👋</h1>
           <p className="text-gray-600">Here's what's happening with your job applications today.</p>
         </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
@@ -396,34 +390,48 @@ const DashboardPage = () => {
 
               {/* Applications List */}
               <div className="divide-y divide-gray-200">
-                {recentApplications.map((app) => (
-                  <div key={app.id} className="p-6 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl">
-                          {app.logo}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 mb-1">{app.position}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{app.company}</p>
-                          <div className="flex items-center gap-3 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <CalendarIcon className="h-4 w-4" />
-                              {new Date(app.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                            <span>•</span>
-                            <span>{app.location}</span>
-                            <span>•</span>
-                            <span className="font-medium text-gray-700">{app.salary}</span>
+                {recentApplications.length > 0 ? (
+                  recentApplications.map((app) => (
+                    <div key={app.id} className="p-6 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl">
+                            💼
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 mb-1">{app.position}</h3>
+                            <p className="text-sm text-gray-600 mb-2">{app.company}</p>
+                            <div className="flex items-center gap-3 text-sm text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon className="h-4 w-4" />
+                                {new Date(app.applied_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                              <span>•</span>
+                              <span>{app.location || 'Not specified'}</span>
+                              {app.salary && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-medium text-gray-700">{app.salary}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status.toLowerCase().replace(' ', ''))}`}>
+                          {app.status}
+                        </span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>
-                        {getStatusText(app.status)}
-                      </span>
                     </div>
+                  ))
+                ) : (
+                  <div className="p-12 text-center text-gray-500">
+                    <BriefcaseIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>No applications yet</p>
+                    <Link to="/applications" className="text-primary-600 hover:text-primary-700 mt-2 inline-block">
+                      Add your first application →
+                    </Link>
                   </div>
-                ))}
+                )}
               </div>
 
               {/* View All Link */}
@@ -443,29 +451,35 @@ const DashboardPage = () => {
                 <ClockIcon className="h-5 w-5 text-primary-600" />
                 Upcoming Interviews
               </h3>
-              <div className="space-y-4">
-                {upcomingInterviews.map((interview) => (
-                  <div key={interview.id} className="p-4 bg-gradient-to-br from-primary-50 to-purple-50 rounded-lg border border-primary-100">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                        <CalendarIcon className="h-5 w-5 text-primary-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm mb-1">{interview.company}</p>
-                        <p className="text-xs text-gray-600 mb-2">{interview.position}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span className="font-medium">{new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                          <span>•</span>
-                          <span>{interview.time}</span>
+              {upcomingInterviews.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingInterviews.map((interview) => (
+                    <div key={interview.id} className="p-4 bg-gradient-to-br from-primary-50 to-purple-50 rounded-lg border border-primary-100">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                          <CalendarIcon className="h-5 w-5 text-primary-600" />
                         </div>
-                        <span className="inline-block mt-2 px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs font-medium">
-                          {interview.type}
-                        </span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 text-sm mb-1">{interview.company}</p>
+                          <p className="text-xs text-gray-600 mb-2">{interview.position}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="font-medium">{new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            <span>•</span>
+                            <span>{interview.time}</span>
+                          </div>
+                          <span className="inline-block mt-2 px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs font-medium">
+                            {interview.type}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-8 text-sm">
+                  No upcoming interviews scheduled
+                </p>
+              )}
               <Link to="/calendar" className="block mt-4 text-center text-primary-600 hover:text-primary-700 font-medium text-sm">
                 View calendar →
               </Link>
@@ -519,6 +533,8 @@ const DashboardPage = () => {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
