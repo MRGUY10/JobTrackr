@@ -9,9 +9,11 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
+import useAuthStore from '../store/authStore';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const register = useAuthStore((state) => state.register);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -98,16 +100,18 @@ const RegisterPage = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Integrate with API
-      // const response = await axios.post('/api/register', formData);
-      // Store token and redirect
+      const result = await register(formData);
       
-      // Simulated delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Registration data:', formData);
-      // navigate('/dashboard');
-      
+      if (result.success) {
+        // Check if email verification is required
+        if (result.data?.requires_verification) {
+          navigate('/verify-email', { state: { email: result.data.email } });
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        setErrors({ submit: result.error });
+      }
     } catch (error) {
       setErrors({ 
         submit: error.response?.data?.message || 'Registration failed. Please try again.' 

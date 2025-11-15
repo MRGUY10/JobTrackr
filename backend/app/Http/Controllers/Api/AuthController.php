@@ -55,16 +55,25 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Trigger email verification
-        event(new Registered($user));
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        // Store OTP in database with 10 minutes expiration
+        \DB::table('email_verifications')->insert([
+            'email' => $user->email,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Send OTP email
+        \Mail::to($user->email)->send(new \App\Mail\VerifyEmailOtp($user, $otp));
 
         return response()->json([
-            'message' => 'Registration successful. Please verify your email.',
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
+            'message' => 'Registration successful. Please check your email for the verification code.',
+            'email' => $user->email,
+            'requires_verification' => true,
         ], 201);
     }
 
@@ -137,7 +146,15 @@ class AuthController extends Controller
     )]
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        try {
+            // Check if user is authenticated and has a token
+            if ($request->user() && $request->user()->currentAccessToken()) {
+                $request->user()->currentAccessToken()->delete();
+            }
+        } catch (\Exception $e) {
+            // Log error but continue with successful logout response
+            \Log::error('Logout token deletion failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Logged out successfully'
@@ -151,6 +168,98 @@ class AuthController extends Controller
     {
         return response()->json([
             'user' => $request->user()
+        ]);
+    }
+
+    /**
+     * Verify OTP for email verification.
+     */
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        // Find OTP record
+        $verification = \DB::table('email_verifications')
+            ->where('email', $request->email)
+            ->where('otp', $request->otp)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$verification) {
+            return response()->json([
+                'message' => 'Invalid or expired verification code.'
+            ], 400);
+        }
+
+        // Mark email as verified
+        $user = User::where('email', $request->email)->firstOrFail();
+        $user->email_verified_at = now();
+        $user->save();
+
+        // Delete used OTP
+        \DB::table('email_verifications')
+            ->where('email', $request->email)
+            ->delete();
+
+        // Create token for auto-login
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Email verified successfully.',
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ]);
+    }
+
+    /**
+     * Resend OTP for email verification.
+     */
+    public function resendOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Email already verified.'
+            ], 400);
+        }
+
+        // Delete old OTPs
+        \DB::table('email_verifications')
+            ->where('email', $request->email)
+            ->delete();
+
+        // Generate new OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        // Store new OTP
+        \DB::table('email_verifications')->insert([
+            'email' => $user->email,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Send OTP email
+        \Mail::to($user->email)->send(new \App\Mail\VerifyEmailOtp($user, $otp));
+
+        return response()->json([
+            'message' => 'Verification code sent successfully.'
         ]);
     }
 

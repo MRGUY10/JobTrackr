@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import useAuthStore from '../store/authStore';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const login = useAuthStore((state) => state.login);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -12,6 +15,7 @@ const LoginPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,17 +56,19 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Integrate with API
-      // const response = await axios.post('/api/login', formData);
-      // Store token and redirect
+      console.log('Attempting login with:', formData.email);
+      const result = await login(formData);
+      console.log('Login result:', result);
       
-      // Simulated delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log('Login data:', formData);
-      // navigate('/dashboard');
-      
+      if (result.success) {
+        console.log('Login successful, navigating to dashboard');
+        navigate('/dashboard');
+      } else {
+        console.error('Login failed:', result.error);
+        setErrors({ submit: result.error });
+      }
     } catch (error) {
+      console.error('Login error:', error);
       setErrors({ 
         submit: error.response?.data?.message || 'Invalid credentials. Please try again.' 
       });
@@ -104,6 +110,12 @@ const LoginPage = () => {
         {/* Login Form */}
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-gray-200">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
+            
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
                 {errors.submit}

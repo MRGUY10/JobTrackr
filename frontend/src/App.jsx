@@ -15,26 +15,36 @@ import NotificationsPage from './pages/NotificationsPage';
 import CalendarPage from './pages/CalendarPage';
 import JobSearchPage from './pages/JobSearchPage';
 import AIJobAnalyzerPage from './pages/AIJobAnalyzerPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/applications" element={<ApplicationsListPage />} />
-        <Route path="/applications/new" element={<AddApplicationPage />} />
-        <Route path="/kanban" element={<KanbanPage />} />
-        <Route path="/documents" element={<DocumentsPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/job-search" element={<JobSearchPage />} />
-        <Route path="/ai-analyzer" element={<AIJobAnalyzerPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/applications" element={<ProtectedRoute><ApplicationsListPage /></ProtectedRoute>} />
+        <Route path="/applications/new" element={<ProtectedRoute><AddApplicationPage /></ProtectedRoute>} />
+        <Route path="/kanban" element={<ProtectedRoute><KanbanPage /></ProtectedRoute>} />
+        <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+        <Route path="/job-search" element={<ProtectedRoute><JobSearchPage /></ProtectedRoute>} />
+        <Route path="/ai-analyzer" element={<ProtectedRoute><AIJobAnalyzerPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

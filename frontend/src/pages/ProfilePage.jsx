@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
 import { 
   UserCircleIcon,
   EnvelopeIcon,
@@ -12,13 +13,21 @@ import {
   PencilIcon,
   ArrowLeftIcon,
   DocumentArrowUpIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon } from '@heroicons/react/24/outline';
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
   const [profileData, setProfileData] = useState({
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -117,9 +126,14 @@ const ProfilePage = () => {
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </Link>
-              <Link to="/profile">
-                <UserCircleIcon className="h-8 w-8 text-primary-600 cursor-pointer hover:text-primary-700" />
+              <Link to="/profile" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
+                <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
               </Link>
+              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                <span className="hidden md:block text-sm font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
 import { 
   BellIcon,
   UserCircleIcon,
@@ -13,10 +14,19 @@ import {
   ClockIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
 const NotificationsPage = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -189,9 +199,14 @@ const NotificationsPage = () => {
                   </span>
                 )}
               </Link>
-              <Link to="/profile">
-                <UserCircleIcon className="h-8 w-8 text-primary-600 cursor-pointer hover:text-primary-700" />
+              <Link to="/profile" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
+                <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
               </Link>
+              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+                <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                <span className="hidden md:block text-sm font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>
