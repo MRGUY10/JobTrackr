@@ -176,8 +176,11 @@ const DocumentsPage = () => {
 
   const categories = [
     { value: 'all', label: 'All Documents', count: documents.length },
-    { value: 'cv', label: 'CVs', count: documents.filter(d => d.type === 'cv').length },
+    { value: 'cv', label: 'Resumes', count: documents.filter(d => d.type === 'cv').length },
     { value: 'cover_letter', label: 'Cover Letters', count: documents.filter(d => d.type === 'cover_letter').length },
+    { value: 'portfolio', label: 'Portfolio', count: documents.filter(d => d.type === 'portfolio').length },
+    { value: 'certificate', label: 'Certificates', count: documents.filter(d => d.type === 'certificate').length },
+    { value: 'reference', label: 'References', count: documents.filter(d => d.type === 'reference').length },
     { value: 'other', label: 'Other', count: documents.filter(d => d.type === 'other').length }
   ];
 
@@ -204,6 +207,9 @@ const DocumentsPage = () => {
     const colors = {
       cv: 'bg-blue-100 text-blue-700',
       cover_letter: 'bg-purple-100 text-purple-700',
+      portfolio: 'bg-green-100 text-green-700',
+      certificate: 'bg-yellow-100 text-yellow-700',
+      reference: 'bg-pink-100 text-pink-700',
       other: 'bg-gray-100 text-gray-700'
     };
     return colors[type] || colors.other;
@@ -670,6 +676,9 @@ const DocumentsPage = () => {
               >
                 <option value="cv">Resume/CV</option>
                 <option value="cover_letter">Cover Letter</option>
+                <option value="portfolio">Portfolio</option>
+                <option value="certificate">Certificate</option>
+                <option value="reference">Reference Letter</option>
                 <option value="other">Other</option>
               </select>
             </div>

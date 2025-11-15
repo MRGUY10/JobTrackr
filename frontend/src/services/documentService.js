@@ -14,7 +14,7 @@ export const getDocuments = async (applicationId) => {
  * Upload a document for an application
  * @param {number} applicationId - The application ID
  * @param {File} file - The file to upload
- * @param {string} type - Document type (cv, cover_letter, other)
+ * @param {string} type - Document type (cv, cover_letter, portfolio, certificate, reference, other)
  * @returns {Promise} Upload response
  */
 export const uploadDocument = async (applicationId, file, type) => {

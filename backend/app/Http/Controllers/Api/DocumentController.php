@@ -55,7 +55,7 @@ class DocumentController extends Controller
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'],
-            'type' => ['required', 'in:cv,cover_letter,other'],
+            'type' => ['required', 'in:cv,cover_letter,portfolio,certificate,reference,other'],
         ]);
 
         $file = $request->file('file');
