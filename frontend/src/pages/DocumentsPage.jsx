@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import applicationService from '../services/applicationService';
+import documentService from '../services/documentService';
 import { 
   DocumentTextIcon,
   PlusIcon,
@@ -27,118 +29,170 @@ const DocumentsPage = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Backend state
+  const [applications, setApplications] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  
+  // Upload form state
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [documentType, setDocumentType] = useState('cv');
+  const [selectedApplication, setSelectedApplication] = useState('');
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // Mock data - replace with API
-  const documents = [
-    {
-      id: 1,
-      name: 'Resume_2025.pdf',
-      type: 'resume',
-      size: '245 KB',
-      uploadDate: '2025-11-10',
-      applicationId: 1,
-      applicationName: 'Google - Senior Frontend Developer',
-      icon: '📄'
-    },
-    {
-      id: 2,
-      name: 'Cover_Letter_Microsoft.docx',
-      type: 'cover_letter',
-      size: '89 KB',
-      uploadDate: '2025-11-08',
-      applicationId: 2,
-      applicationName: 'Microsoft - Full Stack Engineer',
-      icon: '📝'
-    },
-    {
-      id: 3,
-      name: 'Portfolio_Screenshots.zip',
-      type: 'portfolio',
-      size: '5.2 MB',
-      uploadDate: '2025-11-05',
-      applicationId: null,
-      applicationName: null,
-      icon: '📦'
-    },
-    {
-      id: 4,
-      name: 'Certifications_AWS.pdf',
-      type: 'certificate',
-      size: '1.8 MB',
-      uploadDate: '2025-11-03',
-      applicationId: null,
-      applicationName: null,
-      icon: '🎓'
-    },
-    {
-      id: 5,
-      name: 'Reference_Letter_John.pdf',
-      type: 'reference',
-      size: '156 KB',
-      uploadDate: '2025-10-28',
-      applicationId: 5,
-      applicationName: 'Apple - iOS Developer',
-      icon: '✉️'
-    },
-    {
-      id: 6,
-      name: 'Resume_Frontend_Specialist.pdf',
-      type: 'resume',
-      size: '267 KB',
-      uploadDate: '2025-10-25',
-      applicationId: 6,
-      applicationName: 'Netflix - Senior Software Engineer',
-      icon: '📄'
-    },
-    {
-      id: 7,
-      name: 'Technical_Skills_Matrix.xlsx',
-      type: 'other',
-      size: '45 KB',
-      uploadDate: '2025-10-22',
-      applicationId: null,
-      applicationName: null,
-      icon: '📊'
-    },
-    {
-      id: 8,
-      name: 'Project_Demo_Video.mp4',
-      type: 'portfolio',
-      size: '28.5 MB',
-      uploadDate: '2025-10-20',
-      applicationId: 7,
-      applicationName: 'Spotify - UI/UX Engineer',
-      icon: '🎬'
+  // Fetch applications and their documents
+  useEffect(() => {
+    fetchApplicationsAndDocuments();
+  }, []);
+
+  const fetchApplicationsAndDocuments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch all applications
+      const appsResponse = await applicationService.getApplications();
+      const apps = appsResponse.data || appsResponse;
+      setApplications(apps);
+      
+      // Fetch documents for each application
+      const allDocuments = [];
+      for (const app of apps) {
+        try {
+          const docsResponse = await documentService.getDocuments(app.id);
+          const docs = (docsResponse.data || docsResponse).map(doc => ({
+            ...doc,
+            applicationName: `${app.company} - ${app.position}`,
+            applicationId: app.id
+          }));
+          allDocuments.push(...docs);
+        } catch (err) {
+          console.error(`Failed to fetch documents for application ${app.id}:`, err);
+        }
+      }
+      
+      setDocuments(allDocuments);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load documents');
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Only PDF, DOC, DOCX, JPG, and PNG files are allowed');
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      alert('Please select a file to upload');
+      return;
+    }
+    
+    if (!selectedApplication) {
+      alert('Please select an application to link this document');
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      await documentService.uploadDocument(selectedApplication, selectedFile, documentType);
+      
+      // Refresh documents list
+      await fetchApplicationsAndDocuments();
+      
+      // Reset form
+      setSelectedFile(null);
+      setDocumentType('cv');
+      setSelectedApplication('');
+      setShowUploadModal(false);
+      
+      alert('Document uploaded successfully!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to upload document');
+      console.error('Upload error:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (doc) => {
+    try {
+      await documentService.downloadDocument(doc.id, doc.original_name);
+    } catch (err) {
+      alert('Failed to download document');
+      console.error('Download error:', err);
+    }
+  };
+
+  const handleDelete = async (doc) => {
+    if (!window.confirm(`Are you sure you want to delete "${doc.original_name}"?`)) {
+      return;
+    }
+    
+    try {
+      await documentService.deleteDocument(doc.id);
+      await fetchApplicationsAndDocuments();
+      setActiveDropdown(null);
+      alert('Document deleted successfully!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete document');
+      console.error('Delete error:', err);
+    }
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
 
   const categories = [
     { value: 'all', label: 'All Documents', count: documents.length },
-    { value: 'resume', label: 'Resumes', count: documents.filter(d => d.type === 'resume').length },
+    { value: 'cv', label: 'CVs', count: documents.filter(d => d.type === 'cv').length },
     { value: 'cover_letter', label: 'Cover Letters', count: documents.filter(d => d.type === 'cover_letter').length },
-    { value: 'portfolio', label: 'Portfolio', count: documents.filter(d => d.type === 'portfolio').length },
-    { value: 'certificate', label: 'Certificates', count: documents.filter(d => d.type === 'certificate').length },
-    { value: 'reference', label: 'References', count: documents.filter(d => d.type === 'reference').length },
     { value: 'other', label: 'Other', count: documents.filter(d => d.type === 'other').length }
   ];
 
   const stats = {
     total: documents.length,
-    size: '35.7 MB',
-    resumes: documents.filter(d => d.type === 'resume').length,
-    recent: documents.filter(d => new Date(d.uploadDate) > new Date('2025-11-01')).length
+    size: formatFileSize(documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0)),
+    resumes: documents.filter(d => d.type === 'cv').length,
+    recent: documents.filter(d => new Date(d.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length
   };
 
   const filteredDocuments = documents
     .filter(doc => selectedCategory === 'all' || doc.type === selectedCategory)
     .filter(doc => 
       searchQuery === '' || 
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.original_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (doc.applicationName && doc.applicationName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
@@ -148,14 +202,24 @@ const DocumentsPage = () => {
 
   const getFileColor = (type) => {
     const colors = {
-      resume: 'bg-blue-100 text-blue-700',
+      cv: 'bg-blue-100 text-blue-700',
       cover_letter: 'bg-purple-100 text-purple-700',
-      portfolio: 'bg-green-100 text-green-700',
-      certificate: 'bg-yellow-100 text-yellow-700',
-      reference: 'bg-pink-100 text-pink-700',
       other: 'bg-gray-100 text-gray-700'
     };
     return colors[type] || colors.other;
+  };
+
+  const getFileIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+      pdf: '📄',
+      doc: '📝',
+      docx: '📝',
+      jpg: '🖼️',
+      jpeg: '🖼️',
+      png: '🖼️'
+    };
+    return icons[ext] || '📎';
   };
 
   return (
@@ -337,6 +401,22 @@ const DocumentsPage = () => {
           <p className="text-gray-600">Manage your resumes, cover letters, and other job application materials</p>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -438,17 +518,17 @@ const DocumentsPage = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-3 flex-1">
                   <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                    {doc.icon}
+                    {getFileIcon(doc.original_name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate group-hover:text-primary-600 transition-colors">
-                      {doc.name}
+                      {doc.original_name}
                     </h3>
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${getFileColor(doc.type)}`}>
-                        {getFileExtension(doc.name)}
+                        {getFileExtension(doc.original_name)}
                       </span>
-                      <span className="text-xs text-gray-500">{doc.size}</span>
+                      <span className="text-xs text-gray-500">{formatFileSize(doc.file_size)}</span>
                     </div>
                   </div>
                 </div>
@@ -464,16 +544,18 @@ const DocumentsPage = () => {
                   
                   {activeDropdown === doc.id && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                      <button className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left">
-                        <EyeIcon className="h-4 w-4" />
-                        View
-                      </button>
-                      <button className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left">
+                      <button 
+                        onClick={() => handleDownload(doc)}
+                        className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left"
+                      >
                         <ArrowDownTrayIcon className="h-4 w-4" />
                         Download
                       </button>
                       <hr className="my-1" />
-                      <button className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 w-full text-left">
+                      <button 
+                        onClick={() => handleDelete(doc)}
+                        className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 w-full text-left"
+                      >
                         <TrashIcon className="h-4 w-4" />
                         Delete
                       </button>
@@ -487,7 +569,7 @@ const DocumentsPage = () => {
                 <div className="flex items-center justify-between">
                   <span>Uploaded</span>
                   <span className="font-medium text-gray-900">
-                    {new Date(doc.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 </div>
                 {doc.applicationName && (
@@ -500,10 +582,10 @@ const DocumentsPage = () => {
 
               {/* Actions */}
               <div className="flex gap-2">
-                <button className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                  View
-                </button>
-                <button className="flex-1 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-purple-600 rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200">
+                <button 
+                  onClick={() => handleDownload(doc)}
+                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-purple-600 rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
+                >
                   Download
                 </button>
               </div>
@@ -517,16 +599,20 @@ const DocumentsPage = () => {
             <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No documents found</h3>
             <p className="text-gray-600 mb-6">
-              {searchQuery ? 'Try adjusting your search terms' : 'Start by uploading your first document'}
+              {searchQuery ? 'Try adjusting your search terms' : applications.length === 0 ? 'Create an application first to upload documents' : 'Start by uploading your first document'}
             </p>
-            <button 
-              onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
-            >
-              <PlusIcon className="h-5 w-5" />
-              Upload Your First Document
-            </button>
+            {applications.length > 0 && (
+              <button 
+                onClick={() => setShowUploadModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <PlusIcon className="h-5 w-5" />
+                Upload Your First Document
+              </button>
+            )}
           </div>
+        )}
+        </>
         )}
       </div>
 
@@ -537,8 +623,12 @@ const DocumentsPage = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Upload Document</h2>
               <button 
-                onClick={() => setShowUploadModal(false)}
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedFile(null);
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={uploading}
               >
                 <svg className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -546,47 +636,80 @@ const DocumentsPage = () => {
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary-500 transition-colors cursor-pointer">
+            <label className="block border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary-500 transition-colors cursor-pointer">
+              <input 
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploading}
+              />
               <CloudArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">Drop files here or click to browse</p>
-              <p className="text-sm text-gray-500">PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
-            </div>
+              {selectedFile ? (
+                <>
+                  <p className="text-lg font-medium text-gray-900 mb-2">{selectedFile.name}</p>
+                  <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium text-gray-900 mb-2">Click to select file</p>
+                  <p className="text-sm text-gray-500">PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
+                </>
+              )}
+            </label>
 
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Document Type
               </label>
-              <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none">
-                <option>Resume/CV</option>
-                <option>Cover Letter</option>
-                <option>Portfolio</option>
-                <option>Certificate</option>
-                <option>Reference Letter</option>
-                <option>Other</option>
+              <select 
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                disabled={uploading}
+              >
+                <option value="cv">Resume/CV</option>
+                <option value="cover_letter">Cover Letter</option>
+                <option value="other">Other</option>
               </select>
             </div>
 
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Link to Application (Optional)
+                Link to Application <span className="text-red-500">*</span>
               </label>
-              <select className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none">
-                <option value="">None</option>
-                <option>Google - Senior Frontend Developer</option>
-                <option>Microsoft - Full Stack Engineer</option>
-                <option>Meta - React Developer</option>
+              <select 
+                value={selectedApplication}
+                onChange={(e) => setSelectedApplication(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                disabled={uploading}
+              >
+                <option value="">Select an application</option>
+                {applications.map((app) => (
+                  <option key={app.id} value={app.id}>
+                    {app.company} - {app.position}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="flex gap-3 mt-6">
               <button 
-                onClick={() => setShowUploadModal(false)}
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setSelectedFile(null);
+                }}
                 className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                disabled={uploading}
               >
                 Cancel
               </button>
-              <button className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200">
-                Upload
+              <button 
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>
