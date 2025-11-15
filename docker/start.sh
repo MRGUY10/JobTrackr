@@ -4,6 +4,9 @@ set -e
 
 echo "Starting JobTrackr application..."
 
+# Create supervisor log directory
+mkdir -p /var/log/supervisor
+
 # Verify environment variables are set
 echo "Checking environment variables..."
 echo "DB_CONNECTION: ${DB_CONNECTION}"
