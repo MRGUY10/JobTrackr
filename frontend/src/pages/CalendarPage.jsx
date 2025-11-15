@@ -35,6 +35,7 @@ const CalendarPage = () => {
   const [deadlines, setDeadlines] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingInterview, setEditingInterview] = useState(null);
 
   const handleLogout = async () => {
     await logout();
@@ -55,15 +56,27 @@ const CalendarPage = () => {
       const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
       
+      console.log('Fetching calendar events from', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
+      
       const response = await calendarService.getCalendarEvents({
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0]
       });
       
-      setInterviews(response.interviews?.data || []);
-      setDeadlines(response.deadlines?.data || []);
+      console.log('Calendar events response:', response);
+      
+      // Backend returns interviews and deadlines directly as arrays wrapped in data property
+      const interviewsData = response.interviews?.data || response.interviews || [];
+      const deadlinesData = response.deadlines?.data || response.deadlines || [];
+      
+      console.log('Setting interviews:', interviewsData);
+      console.log('Setting deadlines:', deadlinesData);
+      
+      setInterviews(interviewsData);
+      setDeadlines(deadlinesData);
     } catch (err) {
       console.error('Error fetching calendar events:', err);
+      console.error('Error details:', err.response?.data);
       setError('Failed to load calendar events.');
     } finally {
       setIsLoading(false);
@@ -193,7 +206,7 @@ const CalendarPage = () => {
     .filter(i => {
       if (!i.interview_date) return false;
       const interviewDate = new Date(i.interview_date);
-      return interviewDate >= new Date() && (i.status === 'Interview' || i.status === 'Technical Test');
+      return interviewDate >= new Date();
     })
     .sort((a, b) => new Date(a.interview_date) - new Date(b.interview_date));
 
@@ -213,6 +226,557 @@ const CalendarPage = () => {
       default:
         return CalendarIcon;
     }
+  };
+
+  // Format time for display
+  const formatTimeDisplay = (timeStr) => {
+    if (!timeStr) return 'Time TBD';
+    
+    // If already in readable format (e.g., "10:00 AM"), return as is
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      return timeStr;
+    }
+    
+    // If in 24-hour format (e.g., "14:30"), convert to 12-hour
+    if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+      try {
+        const [hours, minutes] = timeStr.split(':');
+        let hour = parseInt(hours);
+        const period = hour >= 12 ? 'PM' : 'AM';
+        
+        if (hour === 0) {
+          hour = 12;
+        } else if (hour > 12) {
+          hour -= 12;
+        }
+        
+        return `${hour}:${minutes} ${period}`;
+      } catch (e) {
+        return timeStr;
+      }
+    }
+    
+    return timeStr;
+  };
+
+  // Edit Interview Modal Component
+  const EditInterviewModal = ({ interview, onClose }) => {
+    // Convert time to HH:MM format if it's in 12-hour format
+    const convertTimeTo24Hour = (timeStr) => {
+      if (!timeStr) return '';
+      
+      // If already in HH:MM format (24-hour), return as is
+      if (/^\d{2}:\d{2}$/.test(timeStr)) {
+        return timeStr;
+      }
+      
+      // If in 12-hour format like "10:00 AM" or "2:30 PM"
+      if (timeStr.includes('AM') || timeStr.includes('PM')) {
+        try {
+          const [time, period] = timeStr.split(' ');
+          let [hours, minutes] = time.split(':');
+          hours = parseInt(hours);
+          
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
+          
+          return `${hours.toString().padStart(2, '0')}:${minutes}`;
+        } catch (e) {
+          console.error('Error converting time:', e);
+          return '';
+        }
+      }
+      
+      return timeStr;
+    };
+
+    const [interviewData, setInterviewData] = useState({
+      interview_date: interview?.interview_date ? new Date(interview.interview_date).toISOString().split('T')[0] : '',
+      interview_time: convertTimeTo24Hour(interview?.interview_time) || '',
+      interview_location: interview?.interview_location || '',
+      interview_type: interview?.interview_type || '',
+      interviewer_name: interview?.interviewer_name || '',
+      interview_notes: interview?.interview_notes || ''
+    });
+
+    console.log('Editing interview:', interview);
+    console.log('Interview data state:', interviewData);
+    const [saving, setSaving] = useState(false);
+    const [modalError, setModalError] = useState(null);
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setInterviewData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+
+      try {
+        setSaving(true);
+        setModalError(null);
+
+        console.log('Updating interview:', interviewData);
+
+        await applicationService.updateApplication(interview.id, {
+          ...interview,
+          ...interviewData
+        });
+
+        console.log('Interview updated successfully');
+
+        // Close modal and refresh
+        onClose();
+        await fetchCalendarEvents();
+      } catch (err) {
+        console.error('Error updating interview:', err);
+        setModalError(err.response?.data?.message || 'Failed to update interview');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">✏️ Edit Interview</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="h-6 w-6 text-gray-600" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {modalError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {modalError}
+              </div>
+            )}
+
+            {/* Application Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-1">{interview.position}</h3>
+              <p className="text-gray-700">{interview.company}</p>
+              <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                {interview.status}
+              </span>
+            </div>
+
+            {/* Interview Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  name="interview_date"
+                  value={interviewData.interview_date}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Time
+                </label>
+                <input
+                  type="time"
+                  name="interview_time"
+                  value={interviewData.interview_time}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Type
+                </label>
+                <select
+                  name="interview_type"
+                  value={interviewData.interview_type}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                >
+                  <option value="">Select type...</option>
+                  <option value="video">📹 Video Call</option>
+                  <option value="phone">📞 Phone Call</option>
+                  <option value="in-person">🏢 In Person</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interviewer Name
+                </label>
+                <input
+                  type="text"
+                  name="interviewer_name"
+                  value={interviewData.interviewer_name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  placeholder="e.g., John Smith"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Location / Meeting Link
+                </label>
+                <input
+                  type="text"
+                  name="interview_location"
+                  value={interviewData.interview_location}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  placeholder="e.g., Zoom link or office address"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Notes
+                </label>
+                <textarea
+                  name="interview_notes"
+                  value={interviewData.interview_notes}
+                  onChange={handleChange}
+                  rows="3"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                  placeholder="Preparation notes, questions to ask, etc..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // Add Interview Modal Component
+  const AddInterviewModal = () => {
+    const [selectedApplication, setSelectedApplication] = useState(null);
+    const [interviewData, setInterviewData] = useState({
+      interview_date: '',
+      interview_time: '',
+      interview_location: '',
+      interview_type: '',
+      interviewer_name: '',
+      interview_notes: ''
+    });
+    const [saving, setSaving] = useState(false);
+    const [modalError, setModalError] = useState(null);
+    const [modalApplications, setModalApplications] = useState([]);
+    const [modalLoading, setModalLoading] = useState(true);
+
+    useEffect(() => {
+      const loadApps = async () => {
+        try {
+          setModalLoading(true);
+          console.log('Fetching applications...');
+          const response = await applicationService.getApplications();
+          console.log('Applications response:', response);
+          const appData = response.data || response || [];
+          console.log('Setting applications:', appData);
+          setModalApplications(appData);
+        } catch (err) {
+          console.error('Error fetching applications:', err);
+          setModalError('Failed to load applications: ' + (err.response?.data?.message || err.message));
+        } finally {
+          setModalLoading(false);
+        }
+      };
+      
+      loadApps();
+    }, []);
+
+    const handleApplicationSelect = (appId) => {
+      const app = modalApplications.find(a => a.id === parseInt(appId));
+      setSelectedApplication(app);
+      // Pre-fill if application already has interview data
+      if (app) {
+        setInterviewData({
+          interview_date: app.interview_date ? new Date(app.interview_date).toISOString().split('T')[0] : '',
+          interview_time: app.interview_time || '',
+          interview_location: app.interview_location || '',
+          interview_type: app.interview_type || '',
+          interviewer_name: app.interviewer_name || '',
+          interview_notes: app.interview_notes || ''
+        });
+      }
+    };
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setInterviewData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      if (!selectedApplication) {
+        setModalError('Please select an application');
+        return;
+      }
+
+      try {
+        setSaving(true);
+        setModalError(null);
+        
+        console.log('Updating application with interview:', {
+          ...selectedApplication,
+          ...interviewData,
+          status: 'Interview'
+        });
+
+        const response = await applicationService.updateApplication(selectedApplication.id, {
+          ...selectedApplication,
+          ...interviewData,
+          status: 'Interview' // Update status to Interview
+        });
+
+        console.log('Interview scheduled successfully:', response);
+
+        // Close modal first
+        setShowAddModal(false);
+        
+        // Refresh calendar events
+        console.log('Refreshing calendar...');
+        await fetchCalendarEvents();
+        
+        // Reset state
+        setSelectedApplication(null);
+        setInterviewData({
+          interview_date: '',
+          interview_time: '',
+          interview_location: '',
+          interview_type: '',
+          interviewer_name: '',
+          interview_notes: ''
+        });
+      } catch (err) {
+        console.error('Error scheduling interview:', err);
+        console.error('Error response:', err.response?.data);
+        setModalError(err.response?.data?.message || 'Failed to schedule interview');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">📅 Schedule Interview</h2>
+            <button
+              onClick={() => {
+                setShowAddModal(false);
+                setSelectedApplication(null);
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="h-6 w-6 text-gray-600" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {modalError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {modalError}
+              </div>
+            )}
+
+            {/* Step 1: Select Application */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Application <span className="text-red-500">*</span>
+              </label>
+              {modalLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full mx-auto"></div>
+                  <p className="text-sm text-gray-600 mt-2">Loading applications...</p>
+                </div>
+              ) : modalApplications.length === 0 ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800">No applications found. Please create an application first.</p>
+                  <Link
+                    to="/applications"
+                    className="inline-block mt-2 text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Go to Applications →
+                  </Link>
+                </div>
+              ) : (
+                <select
+                  value={selectedApplication?.id || ''}
+                  onChange={(e) => handleApplicationSelect(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                  required
+                >
+                  <option value="">Choose an application...</option>
+                  {modalApplications.map(app => (
+                    <option key={app.id} value={app.id}>
+                      {app.position} at {app.company} ({app.status})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-sm text-gray-500 mt-1">
+                Select the job application you want to schedule an interview for
+              </p>
+            </div>
+
+            {/* Step 2: Interview Details (shown after selecting application) */}
+            {selectedApplication && (
+              <>
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Interview Details</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Interview Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="interview_date"
+                        value={interviewData.interview_date}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interview Time
+                </label>
+                <input
+                  type="time"
+                  name="interview_time"
+                  value={interviewData.interview_time}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Interview Type
+                      </label>
+                      <select
+                        name="interview_type"
+                        value={interviewData.interview_type}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                      >
+                        <option value="">Select type...</option>
+                        <option value="video">📹 Video Call</option>
+                        <option value="phone">📞 Phone Call</option>
+                        <option value="in-person">🏢 In Person</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Interviewer Name
+                      </label>
+                      <input
+                        type="text"
+                        name="interviewer_name"
+                        value={interviewData.interviewer_name}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                        placeholder="e.g., John Smith"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Interview Location / Meeting Link
+                      </label>
+                      <input
+                        type="text"
+                        name="interview_location"
+                        value={interviewData.interview_location}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                        placeholder="e.g., Zoom link or office address"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Interview Notes
+                      </label>
+                      <textarea
+                        name="interview_notes"
+                        value={interviewData.interview_notes}
+                        onChange={handleChange}
+                        rows="3"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+                        placeholder="Preparation notes, questions to ask, etc..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setSelectedApplication(null);
+                    }}
+                    className="flex-1 px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? 'Scheduling...' : 'Schedule Interview'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!selectedApplication && (
+              <div className="text-center py-8 text-gray-500">
+                👆 Please select an application to continue
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -562,7 +1126,7 @@ const CalendarPage = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <ClockIcon className="h-4 w-4" />
-                            {interview.interview_time || 'Time TBD'}
+                            {formatTimeDisplay(interview.interview_time)}
                           </div>
                           {interview.interview_location && (
                             <div className="flex items-center gap-2">
@@ -672,7 +1236,7 @@ const CalendarPage = () => {
                           </div>
                           <div className="flex items-center gap-2 text-gray-700">
                             <ClockIcon className="h-5 w-5 text-gray-400" />
-                            <span className="text-sm">{interview.interview_time || 'Time TBD'}</span>
+                            <span className="text-sm">{formatTimeDisplay(interview.interview_time)}</span>
                           </div>
                           {interview.interview_location && (
                             <div className="flex items-center gap-2 text-gray-700">
@@ -709,13 +1273,13 @@ const CalendarPage = () => {
                       </div>
 
                       <div className="flex gap-2 ml-4">
-                        <Link
-                          to={`/applications`}
+                        <button
+                          onClick={() => setEditingInterview(interview)}
                           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
+                          title="Edit Interview"
                         >
                           <PencilIcon className="h-5 w-5" />
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -725,6 +1289,17 @@ const CalendarPage = () => {
           )}
         </div>
       </div>
+
+      {/* Add Interview Modal */}
+      {showAddModal && <AddInterviewModal />}
+
+      {/* Edit Interview Modal */}
+      {editingInterview && (
+        <EditInterviewModal 
+          interview={editingInterview} 
+          onClose={() => setEditingInterview(null)} 
+        />
+      )}
     </div>
   );
 };

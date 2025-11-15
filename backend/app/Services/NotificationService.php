@@ -17,8 +17,10 @@ class NotificationService
     /**
      * Create notification when application status changes
      */
-    public function applicationStatusChanged(Application $application, string $oldStatus, string $newStatus): void
+    public static function applicationStatusChanged(Application $application, string $oldStatus, string $newStatus = null): void
     {
+        $newStatus = $newStatus ?? $application->status;
+        
         $notification = Notification::create([
             'user_id' => $application->user_id,
             'title' => 'Application Status Updated',
@@ -36,13 +38,13 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create notification when interview is scheduled
      */
-    public function interviewScheduled(Application $application): void
+    public static function interviewScheduled(Application $application): void
     {
         $interviewDate = $application->interview_date ? $application->interview_date->format('M d, Y') : 'TBD';
         
@@ -62,13 +64,13 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create reminder notification for upcoming interview
      */
-    public function interviewReminder(Application $application): void
+    public static function interviewReminder(Application $application): void
     {
         $interviewDate = $application->interview_date->format('M d, Y h:i A');
         
@@ -88,13 +90,13 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create notification when application is created
      */
-    public function applicationCreated(Application $application): void
+    public static function applicationCreated(Application $application): void
     {
         $notification = Notification::create([
             'user_id' => $application->user_id,
@@ -111,41 +113,38 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create notification when document is uploaded
      */
-    public function documentUploaded(int $userId, string $documentType, int $applicationId = null): void
+    public static function documentUploaded(Application $application, $document): void
     {
-        $message = $applicationId 
-            ? "A new {$documentType} document has been uploaded for your application."
-            : "A new {$documentType} document has been uploaded to your profile.";
-
         $notification = Notification::create([
-            'user_id' => $userId,
+            'user_id' => $application->user_id,
             'title' => 'Document Uploaded',
-            'message' => $message,
+            'message' => "A new {$document->type} document has been uploaded for your application to {$application->position} at {$application->company}.",
             'type' => 'document_uploaded',
             'metadata' => [
-                'document_type' => $documentType,
-                'application_id' => $applicationId,
+                'document_type' => $document->type,
+                'application_id' => $application->id,
+                'document_id' => $document->id,
+                'company' => $application->company,
+                'position' => $application->position,
             ],
             'related_type' => 'App\Models\Document',
+            'related_id' => $document->id,
             'action_url' => '/documents',
         ]);
 
-        $user = User::find($userId);
-        if ($user) {
-            $this->sendEmail($notification, $user);
-        }
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create notification for deadline approaching
      */
-    public function deadlineApproaching(Application $application, int $daysRemaining): void
+    public static function deadlineApproaching(Application $application, int $daysRemaining): void
     {
         $notification = Notification::create([
             'user_id' => $application->user_id,
@@ -163,16 +162,14 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create follow-up reminder notification
      */
-    public function followUpReminder(Application $application): void
+    public static function followUpReminder(Application $application, int $daysSinceApplied): void
     {
-        $daysSinceApplied = $application->applied_date->diffInDays(now());
-        
         $notification = Notification::create([
             'user_id' => $application->user_id,
             'title' => 'Follow-up Reminder',
@@ -189,13 +186,13 @@ class NotificationService
             'action_url' => "/applications/{$application->id}",
         ]);
 
-        $this->sendEmail($notification, $application->user);
+        self::sendEmail($notification, $application->user);
     }
 
     /**
      * Create general notification
      */
-    public function createGeneral(User $user, string $title, string $message, array $metadata = []): void
+    public static function createGeneral(User $user, string $title, string $message, array $metadata = []): void
     {
         $notification = Notification::create([
             'user_id' => $user->id,
@@ -205,13 +202,13 @@ class NotificationService
             'metadata' => $metadata,
         ]);
 
-        $this->sendEmail($notification, $user);
+        self::sendEmail($notification, $user);
     }
 
     /**
      * Create system notification
      */
-    public function createSystem(User $user, string $title, string $message): void
+    public static function createSystem(User $user, string $title, string $message): void
     {
         Notification::create([
             'user_id' => $user->id,
@@ -224,7 +221,7 @@ class NotificationService
     /**
      * Notify user about new job posting matching their criteria
      */
-    public function newJobPosting(User $user, array $jobData): void
+    public static function newJobPosting(User $user, array $jobData): void
     {
         $notification = Notification::create([
             'user_id' => $user->id,
@@ -237,13 +234,13 @@ class NotificationService
             'action_url' => '/job-search',
         ]);
 
-        $this->sendEmail($notification, $user);
+        self::sendEmail($notification, $user);
     }
 
     /**
      * Send email notification
      */
-    protected function sendEmail(Notification $notification, User $user): void
+    protected static function sendEmail(Notification $notification, User $user): void
     {
         try {
             switch ($notification->type) {
@@ -279,15 +276,15 @@ class NotificationService
     /**
      * Send batch notifications to multiple users
      */
-    public function sendBatch(array $userIds, string $title, string $message, string $type = 'general'): void
+    public static function sendBatch(array $userIds, string $title, string $message, string $type = 'general'): void
     {
         foreach ($userIds as $userId) {
             $user = User::find($userId);
             if ($user) {
                 if ($type === 'general') {
-                    $this->createGeneral($user, $title, $message);
+                    self::createGeneral($user, $title, $message);
                 } else {
-                    $this->createSystem($user, $title, $message);
+                    self::createSystem($user, $title, $message);
                 }
             }
         }

@@ -29,6 +29,13 @@ class StoreApplicationRequest extends FormRequest
             'job_description' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'applied_date' => ['required', 'date'],
+            'interview_date' => ['nullable', 'date'],
+            'interview_time' => ['nullable', 'string', 'max:50'],
+            'interview_location' => ['nullable', 'string', 'max:255'],
+            'interview_type' => ['nullable', 'in:video,phone,in-person'],
+            'interviewer_name' => ['nullable', 'string', 'max:255'],
+            'interview_notes' => ['nullable', 'string'],
+            'deadline' => ['nullable', 'date'],
         ];
     }
 
