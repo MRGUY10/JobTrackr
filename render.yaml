@@ -1,0 +1,77 @@
+services:
+  - type: web
+    name: jobtrackr
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: APP_NAME
+        value: JobTrackr
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://jobtrackr.onrender.com
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: dpg-d4cdu0a4d50c73d519r0-a.oregon-postgres.render.com
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        value: jobtrackr_8jpn
+      - key: DB_USERNAME
+        value: jobtrackr_8jpn_user
+      - key: DB_PASSWORD
+        value: B6vbgGyjzJTvJNIj2Dpy0hhdPCS01puz
+      - key: SESSION_DRIVER
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_LEVEL
+        value: error
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USERNAME
+        value: kamdem.guy@institutsaintjean.org
+      - key: MAIL_PASSWORD
+        value: osurrusawvgooxam
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_FROM_ADDRESS
+        value: kamdem.guy@institutsaintjean.org
+      - key: MAIL_FROM_NAME
+        value: JobTrackr
+      - key: FRONTEND_URL
+        value: https://jobtrackr.onrender.com
+      - key: SANCTUM_STATEFUL_DOMAINS
+        value: jobtrackr.onrender.com
+      - key: SESSION_DOMAIN
+        value: .jobtrackr.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://jobtrackr.onrender.com
+
+databases:
+  - name: jobtrackr-db
+    databaseName: jobtrackr_8jpn
+    user: jobtrackr_8jpn_user
+    region: oregon
+    plan: free
+    postgresMajorVersion: 16
