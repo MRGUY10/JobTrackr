@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import jobService from '../services/jobService';
 import { 
   BellIcon,
   UserCircleIcon,
@@ -37,150 +38,32 @@ const JobSearchPage = () => {
   });
   const [savedJobs, setSavedJobs] = useState([2, 5, 8]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const jobs = [
-    {
-      id: 1,
-      title: 'Senior Frontend Developer',
-      company: 'Google LLC',
-      logo: '🔵',
-      location: 'Mountain View, CA',
-      workMode: 'Remote',
-      jobType: 'Full-time',
-      salary: '$120k - $180k',
-      experience: '5+ years',
-      postedDate: '2 days ago',
-      applicants: 45,
-      matchScore: 95,
-      skills: ['React', 'TypeScript', 'Node.js', 'AWS'],
-      description: 'Join our world-class team building cutting-edge web applications.',
-      benefits: ['Health Insurance', '401k', 'Stock Options', 'Unlimited PTO']
-    },
-    {
-      id: 2,
-      title: 'Full Stack Engineer',
-      company: 'Microsoft',
-      logo: '🟢',
-      location: 'Redmond, WA',
-      workMode: 'Hybrid',
-      jobType: 'Full-time',
-      salary: '$110k - $160k',
-      experience: '3+ years',
-      postedDate: '3 days ago',
-      applicants: 67,
-      matchScore: 92,
-      skills: ['React', 'C#', '.NET', 'Azure'],
-      description: 'Build innovative solutions that impact millions of users worldwide.',
-      benefits: ['Health Insurance', 'Retirement Plan', 'Remote Work', 'Learning Budget']
-    },
-    {
-      id: 3,
-      title: 'React Developer',
-      company: 'Meta',
-      logo: '🔷',
-      location: 'Menlo Park, CA',
-      workMode: 'On-site',
-      jobType: 'Full-time',
-      salary: '$130k - $190k',
-      experience: '4+ years',
-      postedDate: '1 day ago',
-      applicants: 89,
-      matchScore: 90,
-      skills: ['React', 'GraphQL', 'JavaScript', 'Jest'],
-      description: 'Shape the future of social technology with cutting-edge React development.',
-      benefits: ['Comprehensive Health', 'Stock RSUs', 'Free Meals', 'Gym Membership']
-    },
-    {
-      id: 4,
-      title: 'UI/UX Developer',
-      company: 'Apple',
-      logo: '⚪',
-      location: 'Cupertino, CA',
-      workMode: 'On-site',
-      jobType: 'Full-time',
-      salary: '$125k - $175k',
-      experience: '4+ years',
-      postedDate: '5 days ago',
-      applicants: 102,
-      matchScore: 88,
-      skills: ['React', 'Swift', 'Figma', 'Animation'],
-      description: 'Create beautiful, intuitive interfaces for next-generation Apple products.',
-      benefits: ['Health Coverage', 'Employee Discounts', 'Wellness Programs', 'Education']
-    },
-    {
-      id: 5,
-      title: 'Software Development Engineer',
-      company: 'Amazon',
-      logo: '🟠',
-      location: 'Seattle, WA',
-      workMode: 'Remote',
-      jobType: 'Full-time',
-      salary: '$115k - $165k',
-      experience: '3+ years',
-      postedDate: '1 week ago',
-      applicants: 134,
-      matchScore: 85,
-      skills: ['Java', 'Python', 'AWS', 'Microservices'],
-      description: 'Build scalable systems that power e-commerce for millions of customers.',
-      benefits: ['Medical Benefits', '401k Match', 'Employee Discount', 'Career Growth']
-    },
-    {
-      id: 6,
-      title: 'Frontend Engineer',
-      company: 'Netflix',
-      logo: '🔴',
-      location: 'Los Gatos, CA',
-      workMode: 'Hybrid',
-      jobType: 'Full-time',
-      salary: '$130k - $185k',
-      experience: '5+ years',
-      postedDate: '4 days ago',
-      applicants: 78,
-      matchScore: 87,
-      skills: ['React', 'TypeScript', 'Node.js', 'GraphQL'],
-      description: 'Create amazing streaming experiences for 200+ million subscribers.',
-      benefits: ['Unlimited Vacation', 'Parental Leave', 'Health Insurance', 'Stock Options']
-    },
-    {
-      id: 7,
-      title: 'JavaScript Developer',
-      company: 'Shopify',
-      logo: '🟩',
-      location: 'Ottawa, Canada',
-      workMode: 'Remote',
-      jobType: 'Full-time',
-      salary: '$100k - $145k',
-      experience: '3+ years',
-      postedDate: '6 days ago',
-      applicants: 56,
-      matchScore: 82,
-      skills: ['JavaScript', 'React', 'Ruby', 'GraphQL'],
-      description: 'Help merchants around the world grow their businesses with modern commerce.',
-      benefits: ['Health Benefits', 'RRSP Matching', 'Learning Fund', 'Wellness Budget']
-    },
-    {
-      id: 8,
-      title: 'Senior React Engineer',
-      company: 'Airbnb',
-      logo: '🎈',
-      location: 'San Francisco, CA',
-      workMode: 'Hybrid',
-      jobType: 'Full-time',
-      salary: '$135k - $195k',
-      experience: '6+ years',
-      postedDate: '2 days ago',
-      applicants: 91,
-      matchScore: 93,
-      skills: ['React', 'TypeScript', 'Redux', 'Testing'],
-      description: 'Build the platform that connects millions of hosts and guests worldwide.',
-      benefits: ['Travel Credits', 'Health Insurance', 'Equity', 'Remote Options']
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await jobService.getPublicJobPostings();
+      setJobs(data.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load job postings');
+      console.error('Error fetching jobs:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const toggleSaveJob = (jobId) => {
     setSavedJobs(prev => 
@@ -194,23 +77,15 @@ const JobSearchPage = () => {
     const matchesSearch = searchQuery === '' || 
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()));
+      (job.requirements && job.requirements.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesLocation = location === '' || 
       job.location.toLowerCase().includes(location.toLowerCase());
     
-    const matchesJobType = filters.jobType === 'all' || job.jobType === filters.jobType;
-    const matchesWorkMode = filters.workMode === 'all' || job.workMode === filters.workMode;
+    const matchesJobType = filters.jobType === 'all' || job.job_type === filters.jobType;
     
-    return matchesSearch && matchesLocation && matchesJobType && matchesWorkMode;
+    return matchesSearch && matchesLocation && matchesJobType;
   });
-
-  const getMatchScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600 bg-green-100';
-    if (score >= 80) return 'text-blue-600 bg-blue-100';
-    if (score >= 70) return 'text-yellow-600 bg-yellow-100';
-    return 'text-gray-600 bg-gray-100';
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -527,31 +402,40 @@ const JobSearchPage = () => {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {filteredJobs.map(job => (
-                <div
-                  key={job.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Company Logo */}
-                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
-                      {job.logo}
-                    </div>
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              </div>
+            )}
 
-                    {/* Job Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-gray-900 mb-1">{job.title}</h3>
-                          <p className="text-gray-600 flex items-center gap-2">
-                            <BuildingOfficeIcon className="h-4 w-4" />
-                            {job.company}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getMatchScoreColor(job.matchScore)}`}>
-                            {job.matchScore}% Match
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <p className="text-red-800">{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && (
+              <div className="space-y-4">
+                {filteredJobs.map(job => (
+                  <div
+                    key={job.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Company Logo */}
+                      <div className="w-16 h-16 bg-gradient-to-br from-primary-100 to-purple-100 rounded-lg flex items-center justify-center text-2xl font-bold text-primary-700 flex-shrink-0">
+                        {job.company.charAt(0).toUpperCase()}
+                      </div>
+
+                      {/* Job Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4 mb-2">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{job.title}</h3>
+                            <p className="text-gray-600 flex items-center gap-2">
+                              <BuildingOfficeIcon className="h-4 w-4" />
+                              {job.company}
+                            </p>
                           </div>
                           <button
                             onClick={() => toggleSaveJob(job.id)}
@@ -564,69 +448,92 @@ const JobSearchPage = () => {
                             )}
                           </button>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
-                        <span className="flex items-center gap-1">
-                          <MapPinIcon className="h-4 w-4" />
-                          {job.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <BriefcaseIcon className="h-4 w-4" />
-                          {job.workMode}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <BanknotesIcon className="h-4 w-4" />
-                          {job.salary}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
-                          {job.experience}
-                        </span>
-                      </div>
-
-                      <p className="text-gray-700 mb-4">{job.description}</p>
-
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {job.skills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                           <span className="flex items-center gap-1">
-                            <CalendarIcon className="h-4 w-4" />
-                            Posted {job.postedDate}
+                            <MapPinIcon className="h-4 w-4" />
+                            {job.location}
                           </span>
                           <span className="flex items-center gap-1">
-                            <UserCircleIcon className="h-4 w-4" />
-                            {job.applicants} applicants
+                            <BriefcaseIcon className="h-4 w-4" />
+                            {job.job_type}
+                          </span>
+                          {job.salary_range && (
+                            <span className="flex items-center gap-1">
+                              <BanknotesIcon className="h-4 w-4" />
+                              {job.salary_range}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <ClockIcon className="h-4 w-4" />
+                            {job.experience_level}
                           </span>
                         </div>
 
-                        <div className="flex gap-2">
-                          <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                            View Details
-                          </button>
-                          <Link
-                            to="/applications/new"
-                            className="px-4 py-2 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
-                          >
-                            Quick Apply
-                          </Link>
+                        <p className="text-gray-700 mb-4 line-clamp-2">{job.description}</p>
+
+                        {job.requirements && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              <span className="font-semibold">Requirements:</span> {job.requirements}
+                            </p>
+                          </div>
+                        )}
+
+                        {job.benefits && (
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {job.benefits.split(',').slice(0, 4).map((benefit, index) => (
+                              <span
+                                key={index}
+                                className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium"
+                              >
+                                {benefit.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon className="h-4 w-4" />
+                              Posted {new Date(job.created_at).toLocaleDateString()}
+                            </span>
+                            {job.deadline && (
+                              <span className="flex items-center gap-1 text-orange-600">
+                                <ClockIcon className="h-4 w-4" />
+                                Deadline: {new Date(job.deadline).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            {job.application_url ? (
+                              <a
+                                href={job.application_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
+                              >
+                                Apply Now
+                              </a>
+                            ) : (
+                              <Link
+                                to="/applications/new"
+                                state={{ jobData: job }}
+                                className="px-4 py-2 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
+                              >
+                                Quick Apply
+                              </Link>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {filteredJobs.length === 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">

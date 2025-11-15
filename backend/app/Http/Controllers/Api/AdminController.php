@@ -247,4 +247,27 @@ class AdminController extends Controller
 
         return response()->json(['message' => 'Job posting deleted successfully']);
     }
+
+    #[OA\Get(
+        path: "/api/job-postings",
+        summary: "Get all active job postings (public)",
+        tags: ["Jobs"],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "List of active job postings"
+            )
+        ]
+    )]
+    public function getPublicJobPostings(): JsonResponse
+    {
+        $jobs = JobPosting::with('postedBy:id,name')
+            ->where('status', 'active')
+            ->whereNull('deadline')
+            ->orWhere('deadline', '>=', now())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $jobs]);
+    }
 }

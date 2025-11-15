@@ -1,6 +1,12 @@
 import api from './api';
 
 const jobService = {
+  // Public: Get active job postings (no auth required)
+  getPublicJobPostings: async () => {
+    const response = await api.get('/job-postings');
+    return response.data;
+  },
+
   // Admin: Get all job postings
   getJobPostings: async () => {
     const response = await api.get('/admin/job-postings');
