@@ -12,6 +12,149 @@
         }
     ],
     "paths": {
+        "/api/admin/dashboard": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get admin dashboard statistics",
+                "operationId": "a4e953abeda97cdeaa1c2af786aea1f3",
+                "responses": {
+                    "200": {
+                        "description": "Admin dashboard data"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/users": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get all users (admin only)",
+                "operationId": "8734f0eb21eaec99b614d902ba09f030",
+                "responses": {
+                    "200": {
+                        "description": "List of users"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/applications": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get all applications (admin only)",
+                "operationId": "99ee3bafb711d75fc895abd1709b1f5f",
+                "responses": {
+                    "200": {
+                        "description": "List of all applications"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/job-postings": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get all job postings (admin only)",
+                "operationId": "d55ef284a8df37018cc97cad34d34d79",
+                "responses": {
+                    "200": {
+                        "description": "List of all job postings"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create a new job posting (admin only)",
+                "operationId": "bfa15e90cef93e6081bb2e35e5f28db2",
+                "responses": {
+                    "201": {
+                        "description": "Job posting created"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/job-postings/{id}": {
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Update a job posting (admin only)",
+                "operationId": "728d8ca3626e11bc2d5c07c47528afe5",
+                "responses": {
+                    "200": {
+                        "description": "Job posting updated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete a job posting (admin only)",
+                "operationId": "5b9d6004d6879536d9001031b076a82b",
+                "responses": {
+                    "200": {
+                        "description": "Job posting deleted"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/job-postings": {
+            "get": {
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Get all active job postings (public)",
+                "operationId": "6da30d2790349a6790b594f1f60bf8d0",
+                "responses": {
+                    "200": {
+                        "description": "List of active job postings"
+                    }
+                }
+            }
+        },
         "/api/applications": {
             "get": {
                 "tags": [
@@ -317,6 +460,102 @@
                 "responses": {
                     "200": {
                         "description": "Application deleted successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/calendar/events": {
+            "get": {
+                "tags": [
+                    "Calendar"
+                ],
+                "summary": "Get calendar events (interviews and deadlines)",
+                "operationId": "3edd232d98cc0c5658a5c9f49e17ac56",
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "description": "Start date filter (Y-m-d)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "description": "End date filter (Y-m-d)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Calendar events",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "interviews": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Application"
+                                            }
+                                        },
+                                        "deadlines": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Application"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/calendar/interviews": {
+            "get": {
+                "tags": [
+                    "Calendar"
+                ],
+                "summary": "Get upcoming interviews",
+                "operationId": "261f53d05406bb32e5f38fec52588165",
+                "responses": {
+                    "200": {
+                        "description": "Upcoming interviews",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Application"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -1161,8 +1400,20 @@
     },
     "tags": [
         {
+            "name": "Admin",
+            "description": "Admin"
+        },
+        {
+            "name": "Jobs",
+            "description": "Jobs"
+        },
+        {
             "name": "Applications",
             "description": "Applications"
+        },
+        {
+            "name": "Calendar",
+            "description": "Calendar"
         },
         {
             "name": "Authentication",

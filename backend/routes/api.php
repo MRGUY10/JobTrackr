@@ -99,6 +99,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/recent-activity', [StatisticsController::class, 'recentActivity']);
     });
     
+    // Calendar Routes
+    Route::prefix('calendar')->group(function () {
+        Route::get('/events', [ApplicationController::class, 'calendarEvents']);
+        Route::get('/interviews', [ApplicationController::class, 'upcomingInterviews']);
+    });
+    
     // Admin Routes (Require Admin Role)
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);

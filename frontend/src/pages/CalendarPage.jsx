@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import calendarService from '../services/calendarService';
+import applicationService from '../services/applicationService';
 import { 
   BellIcon,
   UserCircleIcon,
@@ -24,18 +26,52 @@ import {
 const CalendarPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 10, 14)); // November 14, 2025
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
-  const [viewMode, setViewMode] = useState('month'); // 'month', 'week', 'day'
+  const [viewMode, setViewMode] = useState('month');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [interviews, setInterviews] = useState([]);
+  const [deadlines, setDeadlines] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const interviews = [
+  // Fetch calendar events on component mount and when month changes
+  useEffect(() => {
+    fetchCalendarEvents();
+  }, [currentDate]);
+
+  const fetchCalendarEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Get start and end of current month
+      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      const response = await calendarService.getCalendarEvents({
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0]
+      });
+      
+      setInterviews(response.interviews?.data || []);
+      setDeadlines(response.deadlines?.data || []);
+    } catch (err) {
+      console.error('Error fetching calendar events:', err);
+      setError('Failed to load calendar events.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Mock data for fallback (will be removed once backend is integrated)
+  const mockInterviews = [
     {
       id: 1,
       company: 'Google LLC',
@@ -121,7 +157,18 @@ const CalendarPage = () => {
 
   const getInterviewsForDate = (date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return interviews.filter(interview => interview.date === dateStr);
+    return interviews.filter(interview => {
+      const interviewDate = interview.interview_date ? new Date(interview.interview_date).toISOString().split('T')[0] : null;
+      return interviewDate === dateStr;
+    });
+  };
+
+  const getDeadlinesForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return deadlines.filter(deadline => {
+      const deadlineDate = deadline.deadline ? new Date(deadline.deadline).toISOString().split('T')[0] : null;
+      return deadlineDate === dateStr;
+    });
   };
 
   const previousMonth = () => {
@@ -143,20 +190,16 @@ const CalendarPage = () => {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const upcomingInterviews = interviews
-    .filter(i => i.status === 'upcoming')
-    .sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+    .filter(i => {
+      if (!i.interview_date) return false;
+      const interviewDate = new Date(i.interview_date);
+      return interviewDate >= new Date() && (i.status === 'Interview' || i.status === 'Technical Test');
+    })
+    .sort((a, b) => new Date(a.interview_date) - new Date(b.interview_date));
 
-  const getInterviewTypeColor = (type) => {
-    switch (type) {
-      case 'video':
-        return 'bg-blue-100 text-blue-700 border-blue-300';
-      case 'phone':
-        return 'bg-green-100 text-green-700 border-green-300';
-      case 'in-person':
-        return 'bg-purple-100 text-purple-700 border-purple-300';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-300';
-    }
+  const getInterviewTypeStyle = (type) => {
+    const style = calendarService.getInterviewTypeStyle(type);
+    return `${style.bgColor} ${style.color} ${style.borderColor}`;
   };
 
   const getInterviewIcon = (type) => {
@@ -411,6 +454,8 @@ const CalendarPage = () => {
                   const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
                   const dateStr = date.toISOString().split('T')[0];
                   const dayInterviews = getInterviewsForDate(date);
+                  const dayDeadlines = getDeadlinesForDate(date);
+                  const hasEvents = dayInterviews.length > 0 || dayDeadlines.length > 0;
                   const isToday = 
                     date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
@@ -421,7 +466,7 @@ const CalendarPage = () => {
                       key={day}
                       className={`aspect-square border rounded-lg p-2 cursor-pointer transition-all hover:border-primary-500 hover:shadow-md ${
                         isToday ? 'bg-primary-50 border-primary-600' : 'border-gray-200'
-                      } ${dayInterviews.length > 0 ? 'bg-blue-50' : ''}`}
+                      } ${hasEvents ? 'bg-blue-50' : ''}`}
                       onClick={() => setSelectedDate(date)}
                     >
                       <div className="flex flex-col h-full">
@@ -430,20 +475,29 @@ const CalendarPage = () => {
                         }`}>
                           {day}
                         </span>
-                        {dayInterviews.length > 0 && (
+                        {hasEvents && (
                           <div className="mt-1 space-y-1">
-                            {dayInterviews.slice(0, 2).map(interview => (
+                            {dayInterviews.slice(0, 1).map(interview => (
                               <div
                                 key={interview.id}
                                 className="text-xs bg-primary-600 text-white px-1 py-0.5 rounded truncate"
-                                title={`${interview.time} - ${interview.company}`}
+                                title={`${interview.interview_time || 'TBD'} - ${interview.company}`}
                               >
-                                {interview.time}
+                                📅 {interview.interview_time || 'TBD'}
                               </div>
                             ))}
-                            {dayInterviews.length > 2 && (
+                            {dayDeadlines.slice(0, 1).map(deadline => (
+                              <div
+                                key={deadline.id}
+                                className="text-xs bg-orange-600 text-white px-1 py-0.5 rounded truncate"
+                                title={`Deadline - ${deadline.company}`}
+                              >
+                                ⏰ Deadline
+                              </div>
+                            ))}
+                            {(dayInterviews.length + dayDeadlines.length) > 2 && (
                               <div className="text-xs text-gray-600 font-medium">
-                                +{dayInterviews.length - 2} more
+                                +{(dayInterviews.length + dayDeadlines.length) - 2} more
                               </div>
                             )}
                           </div>
@@ -473,7 +527,12 @@ const CalendarPage = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-24">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Upcoming Interviews</h3>
               
-              {upcomingInterviews.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                  <p className="text-gray-600 text-sm">Loading...</p>
+                </div>
+              ) : upcomingInterviews.length === 0 ? (
                 <div className="text-center py-8">
                   <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-600 text-sm">No upcoming interviews</p>
@@ -481,12 +540,12 @@ const CalendarPage = () => {
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {upcomingInterviews.map((interview) => {
-                    const Icon = getInterviewIcon(interview.type);
+                    const Icon = getInterviewIcon(interview.interview_type);
                     
                     return (
                       <div
                         key={interview.id}
-                        className={`border-2 rounded-lg p-4 ${getInterviewTypeColor(interview.type)}`}
+                        className={`border-2 rounded-lg p-4 ${getInterviewTypeStyle(interview.interview_type)}`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -499,31 +558,37 @@ const CalendarPage = () => {
                         <div className="space-y-1 text-sm text-gray-700 mb-3">
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="h-4 w-4" />
-                            {new Date(interview.date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+                            {calendarService.formatDate(interview.interview_date)}
                           </div>
                           <div className="flex items-center gap-2">
                             <ClockIcon className="h-4 w-4" />
-                            {interview.time} ({interview.duration})
+                            {interview.interview_time || 'Time TBD'}
                           </div>
-                          {interview.type === 'video' && (
+                          {interview.interview_location && (
                             <div className="flex items-center gap-2">
-                              <VideoCameraIcon className="h-4 w-4" />
-                              {interview.location}
+                              <Icon className="h-4 w-4" />
+                              {interview.interview_location}
                             </div>
                           )}
                         </div>
 
                         <div className="flex gap-2">
-                          <button className="flex-1 px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                          <Link
+                            to={`/applications`}
+                            className="flex-1 px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-center"
+                          >
                             View Details
-                          </button>
-                          <button className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors">
-                            Join Meeting
-                          </button>
+                          </Link>
+                          {interview.interview_type === 'video' && interview.interview_location && (
+                            <a
+                              href={interview.interview_location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors text-center"
+                            >
+                              Join Meeting
+                            </a>
+                          )}
                         </div>
                       </div>
                     );
@@ -537,87 +602,127 @@ const CalendarPage = () => {
         {/* Interview List Section */}
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">All Interviews</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {interviews.map((interview) => {
-              const Icon = getInterviewIcon(interview.type);
-              
-              return (
-                <div
-                  key={interview.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getInterviewTypeColor(interview.type)}`}>
-                          <Icon className="h-6 w-6" />
+          
+          {isLoading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <div className="animate-spin h-12 w-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading interviews...</p>
+            </div>
+          ) : interviews.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <CalendarIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Interviews Scheduled</h3>
+              <p className="text-gray-600 mb-4">
+                You haven't scheduled any interviews yet. Add interview details to your applications to see them here.
+              </p>
+              <Link
+                to="/applications"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all"
+              >
+                Go to Applications
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {interviews.map((interview) => {
+                const Icon = getInterviewIcon(interview.interview_type);
+                const isPast = calendarService.isPast(interview.interview_date);
+                
+                return (
+                  <div
+                    key={interview.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${getInterviewTypeStyle(interview.interview_type)}`}>
+                            <Icon className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900">{interview.company}</h3>
+                            <p className="text-gray-600">{interview.position}</p>
+                          </div>
+                          {isPast ? (
+                            <span className="ml-2 px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full">
+                              Past
+                            </span>
+                          ) : calendarService.isToday(interview.interview_date) ? (
+                            <span className="ml-2 px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                              Today
+                            </span>
+                          ) : (
+                            <span className="ml-2 px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                              {calendarService.getRelativeTime(interview.interview_date)}
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">{interview.company}</h3>
-                          <p className="text-gray-600">{interview.position}</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <CalendarIcon className="h-5 w-5 text-gray-400" />
+                            <span className="text-sm">
+                              {calendarService.formatDate(interview.interview_date, {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <ClockIcon className="h-5 w-5 text-gray-400" />
+                            <span className="text-sm">{interview.interview_time || 'Time TBD'}</span>
+                          </div>
+                          {interview.interview_location && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <Icon className="h-5 w-5 text-gray-400" />
+                              <span className="text-sm truncate">{interview.interview_location}</span>
+                            </div>
+                          )}
                         </div>
-                        {interview.status === 'completed' && (
-                          <span className="ml-2 px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                            Completed
-                          </span>
+
+                        {(interview.interview_type || interview.interviewer_name) && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            {interview.interview_type && (
+                              <div>
+                                <span className="text-sm text-gray-600">Interview Type:</span>
+                                <p className="font-medium text-gray-900 capitalize">{calendarService.getInterviewTypeStyle(interview.interview_type).label}</p>
+                              </div>
+                            )}
+                            {interview.interviewer_name && (
+                              <div>
+                                <span className="text-sm text-gray-600">Interviewer:</span>
+                                <p className="font-medium text-gray-900">{interview.interviewer_name}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {interview.interview_notes && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p className="text-sm text-yellow-900">
+                              <span className="font-medium">Notes:</span> {interview.interview_notes}
+                            </p>
+                          </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <CalendarIcon className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm">
-                            {new Date(interview.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <ClockIcon className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm">{interview.time} ({interview.duration})</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Icon className="h-5 w-5 text-gray-400" />
-                          <span className="text-sm">{interview.location}</span>
-                        </div>
+                      <div className="flex gap-2 ml-4">
+                        <Link
+                          to={`/applications`}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </Link>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <span className="text-sm text-gray-600">Interview Type:</span>
-                          <p className="font-medium text-gray-900">{interview.interviewType}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm text-gray-600">Interviewer:</span>
-                          <p className="font-medium text-gray-900">{interview.interviewer}</p>
-                        </div>
-                      </div>
-
-                      {interview.notes && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                          <p className="text-sm text-yellow-900">
-                            <span className="font-medium">Notes:</span> {interview.notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 ml-4">
-                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

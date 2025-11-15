@@ -39,6 +39,13 @@ class Application extends Model
         'job_description',
         'notes',
         'applied_date',
+        'interview_date',
+        'interview_time',
+        'interview_location',
+        'interview_type',
+        'interviewer_name',
+        'interview_notes',
+        'deadline',
     ];
 
     /**
@@ -50,6 +57,8 @@ class Application extends Model
     {
         return [
             'applied_date' => 'date',
+            'interview_date' => 'datetime',
+            'deadline' => 'date',
         ];
     }
 

@@ -1,5 +1,44 @@
 # JobTrackr - Change Log
 
+## Version 1.3.0 - Calendar & Interview Management System (November 15, 2025)
+
+### Added - Calendar System
+- **Interview Management**: Schedule and track interviews with complete details
+- **Calendar View**: Month view with interview and deadline indicators
+- **Interview Fields**: interview_date, interview_time, interview_location, interview_type (video/phone/in-person), interviewer_name, interview_notes
+- **Deadline Tracking**: Set deadlines for applications with visual reminders
+- **Calendar API Endpoints**: 
+  - `GET /api/calendar/events` - Get all calendar events (interviews and deadlines)
+  - `GET /api/calendar/interviews` - Get upcoming interviews only
+- **Frontend Integration**: Complete CalendarPage with:
+  - Month view with event indicators
+  - Upcoming interviews sidebar
+  - Full interview list with past/present/future indicators
+  - Direct links to join video meetings
+  - Filter by date range
+  - Loading and error states
+- **Calendar Service**: calendarService.js with helper functions:
+  - Date formatting utilities
+  - Interview type styling (icons, colors)
+  - Relative time calculations (Today, Tomorrow, In 3 days)
+  - Event grouping by month
+  - Past/present/future detection
+
+### Enhanced
+- **Application Model**: Added 7 new fields for interview and deadline management
+- **ApplicationController**: New calendar endpoints for fetching events and upcoming interviews
+- **Notification Integration**: Automatic interview reminders and deadline warnings
+- **Database Migration**: `2025_11_15_182424_add_calendar_fields_to_applications_table.php`
+
+### Technical Details
+- Migration: `2025_11_15_182424_add_calendar_fields_to_applications_table.php` (run successfully)
+- Service: `frontend/src/services/calendarService.js` (200+ lines with utilities)
+- Page: `frontend/src/pages/CalendarPage.jsx` (fully integrated with backend)
+- API Routes: 2 new calendar endpoints
+- Swagger Documentation: Updated with calendar endpoints
+
+---
+
 ## Version 1.2.0 - Comprehensive Notification System (November 15, 2025)
 
 ### Added - Notification System

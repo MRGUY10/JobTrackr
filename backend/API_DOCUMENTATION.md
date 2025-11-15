@@ -53,6 +53,49 @@ php artisan l5-swagger:generate
 - `POST /api/profile/avatar` - Upload avatar image
 - `POST /api/profile/cv` - Upload CV document
 
+### Applications
+- `GET /api/applications` - List all applications (with filtering)
+- `POST /api/applications` - Create new application
+- `GET /api/applications/{id}` - Get specific application
+- `PUT /api/applications/{id}` - Update application (including interview details)
+- `DELETE /api/applications/{id}` - Delete application
+
+### Calendar & Interviews
+- `GET /api/calendar/events` - Get calendar events (interviews and deadlines)
+- `GET /api/calendar/interviews` - Get upcoming interviews
+
+### Documents
+- `GET /api/applications/{id}/documents` - List application documents
+- `POST /api/applications/{id}/documents` - Upload document
+- `GET /api/documents/{id}/download` - Download document
+- `DELETE /api/documents/{id}` - Delete document
+
+### Notifications
+- `GET /api/notifications` - List all notifications
+- `GET /api/notifications/unread-count` - Get unread count
+- `PUT /api/notifications/{id}/read` - Mark as read
+- `PUT /api/notifications/read-all` - Mark all as read
+- `DELETE /api/notifications/{id}` - Delete notification
+
+### Statistics
+- `GET /api/stats/overview` - Get overview statistics
+- `GET /api/stats/monthly` - Get monthly statistics
+- `GET /api/stats/by-status` - Get applications by status
+- `GET /api/stats/top-companies` - Get top companies
+- `GET /api/stats/recent-activity` - Get recent activity
+
+### Job Postings (Public)
+- `GET /api/job-postings` - Get all job postings (no auth required)
+
+### Admin Routes (Admin only)
+- `GET /api/admin/dashboard` - Admin dashboard statistics
+- `GET /api/admin/users` - List all users
+- `GET /api/admin/applications` - List all applications
+- `GET /api/admin/job-postings` - List job postings (admin view)
+- `POST /api/admin/job-postings` - Create job posting
+- `PUT /api/admin/job-postings/{id}` - Update job posting
+- `DELETE /api/admin/job-postings/{id}` - Delete job posting
+
 ## Response Format
 
 All API responses follow this structure:

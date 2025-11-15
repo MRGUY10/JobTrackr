@@ -263,4 +263,105 @@ class ApplicationController extends Controller
             'message' => 'Application deleted successfully',
         ]);
     }
+
+    #[OA\Get(
+        path: "/api/calendar/events",
+        summary: "Get calendar events (interviews and deadlines)",
+        security: [["bearerAuth" => []]],
+        tags: ["Calendar"],
+        parameters: [
+            new OA\Parameter(
+                name: "start_date",
+                in: "query",
+                description: "Start date filter (Y-m-d)",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            ),
+            new OA\Parameter(
+                name: "end_date",
+                in: "query",
+                description: "End date filter (Y-m-d)",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Calendar events",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "interviews", type: "array", items: new OA\Items(ref: "#/components/schemas/Application")),
+                        new OA\Property(property: "deadlines", type: "array", items: new OA\Items(ref: "#/components/schemas/Application"))
+                    ]
+                )
+            )
+        ]
+    )]
+    public function calendarEvents(Request $request): JsonResponse
+    {
+        $query = Application::where('user_id', $request->user()->id);
+
+        // Filter by date range if provided
+        if ($request->has('start_date')) {
+            $query->where(function($q) use ($request) {
+                $q->where('interview_date', '>=', $request->start_date)
+                  ->orWhere('deadline', '>=', $request->start_date);
+            });
+        }
+
+        if ($request->has('end_date')) {
+            $query->where(function($q) use ($request) {
+                $q->where('interview_date', '<=', $request->end_date)
+                  ->orWhere('deadline', '<=', $request->end_date);
+            });
+        }
+
+        $applications = $query->get();
+
+        // Separate interviews and deadlines
+        $interviews = $applications->filter(function($app) {
+            return $app->interview_date !== null;
+        })->values();
+
+        $deadlines = $applications->filter(function($app) {
+            return $app->deadline !== null;
+        })->values();
+
+        return response()->json([
+            'interviews' => ApplicationResource::collection($interviews),
+            'deadlines' => ApplicationResource::collection($deadlines),
+        ]);
+    }
+
+    #[OA\Get(
+        path: "/api/calendar/interviews",
+        summary: "Get upcoming interviews",
+        security: [["bearerAuth" => []]],
+        tags: ["Calendar"],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Upcoming interviews",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "data", type: "array", items: new OA\Items(ref: "#/components/schemas/Application"))
+                    ]
+                )
+            )
+        ]
+    )]
+    public function upcomingInterviews(Request $request): JsonResponse
+    {
+        $interviews = Application::where('user_id', $request->user()->id)
+            ->whereNotNull('interview_date')
+            ->where('interview_date', '>=', now())
+            ->whereIn('status', ['Interview', 'Technical Test'])
+            ->orderBy('interview_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'data' => ApplicationResource::collection($interviews),
+        ]);
+    }
 }
