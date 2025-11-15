@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import profileService from '../services/profileService';
 import { 
   UserCircleIcon,
   EnvelopeIcon,
@@ -22,32 +23,93 @@ import { BellIcon } from '@heroicons/react/24/outline';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [cvFile, setCvFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    location: 'San Francisco, CA',
-    title: 'Senior Frontend Developer',
-    bio: 'Passionate frontend developer with 5+ years of experience building scalable web applications. Specialized in React, TypeScript, and modern web technologies.',
-    website: 'https://johndoe.dev',
-    linkedin: 'https://linkedin.com/in/johndoe',
-    github: 'https://github.com/johndoe',
-    yearsOfExperience: '5',
-    currentCompany: 'Tech Corp',
-    education: 'BS Computer Science',
-    skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS']
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    title: '',
+    bio: '',
+    website: '',
+    linkedin: '',
+    github: '',
+    yearsOfExperience: '',
+    currentCompany: '',
+    education: '',
+    skills: []
   });
 
   const [newSkill, setNewSkill] = useState('');
+  const [stats, setStats] = useState({
+    applications: 0,
+    interviews: 0,
+    offers: 0,
+    documents: 0
+  });
+
+  // Fetch profile data on mount
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await profileService.getProfile();
+      
+      // Update profile data from backend
+      const userData = data.user;
+      setProfileData({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+        location: userData.location || '',
+        title: userData.title || '',
+        bio: userData.bio || '',
+        website: userData.website || '',
+        linkedin: userData.linkedin || '',
+        github: userData.github || '',
+        yearsOfExperience: userData.years_of_experience || '',
+        currentCompany: userData.current_company || '',
+        education: userData.education || '',
+        skills: userData.skills ? JSON.parse(userData.skills) : []
+      });
+
+      // Update stats (using applications count from backend)
+      setStats({
+        applications: userData.applications?.length || 0,
+        interviews: userData.applications?.filter(app => app.status === 'interview').length || 0,
+        offers: userData.applications?.filter(app => app.status === 'offer').length || 0,
+        documents: userData.applications?.reduce((sum, app) => sum + (app.documents?.length || 0), 0) || 0
+      });
+
+      // Update auth store with latest user data
+      setUser(userData);
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      setError(err.response?.data?.message || 'Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,17 +133,110 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Save to API
-    console.log('Saving profile:', profileData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      // Prepare data for backend (convert camelCase to snake_case)
+      // Only send fields that have values or convert empty strings to null
+      const updateData = {
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone || null,
+        location: profileData.location || null,
+        title: profileData.title || null,
+        bio: profileData.bio || null,
+        website: profileData.website || null,
+        linkedin: profileData.linkedin || null,
+        github: profileData.github || null,
+        years_of_experience: profileData.yearsOfExperience || null,
+        current_company: profileData.currentCompany || null,
+        education: profileData.education || null,
+        skills: profileData.skills.length > 0 ? JSON.stringify(profileData.skills) : null
+      };
+
+      const response = await profileService.updateProfile(updateData);
+      setUser(response.user);
+      setSuccess('Profile updated successfully!');
+      setIsEditing(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const stats = {
-    applications: 48,
-    interviews: 8,
-    offers: 3,
-    documents: 12
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 2048 * 1024) {
+      setError('Image size must be less than 2MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError(null);
+      const response = await profileService.uploadAvatar(file);
+      setSuccess('Avatar uploaded successfully!');
+      
+      // Refresh profile to get new avatar URL
+      await fetchProfile();
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      setError(err.response?.data?.message || 'Failed to upload avatar');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCvChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type and size
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please select a PDF, DOC, or DOCX file');
+      return;
+    }
+
+    if (file.size > 5120 * 1024) {
+      setError('File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError(null);
+      const response = await profileService.uploadCv(file);
+      setSuccess('CV uploaded successfully!');
+      
+      // Refresh profile to get new CV URL
+      await fetchProfile();
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error uploading CV:', err);
+      setError(err.response?.data?.message || 'Failed to upload CV');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -257,59 +412,112 @@ const ProfilePage = () => {
 
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <Link 
-            to="/dashboard"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-            <p className="text-gray-600 mt-1">Manage your personal information and preferences</p>
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            {success}
           </div>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
-            >
-              <PencilIcon className="h-5 w-5" />
-              Edit Profile
-            </button>
-          ) : (
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                <CheckCircleIcon className="h-5 w-5" />
-                Save Changes
-              </button>
-            </div>
-          )}
-        </div>
+        )}
+        
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
-        {/* Profile Header Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            {/* Avatar */}
-            <div className="relative group">
-              <div className="w-32 h-32 bg-gradient-to-br from-primary-100 to-purple-100 rounded-full flex items-center justify-center text-5xl font-bold text-primary-600">
-                {profileData.name.split(' ').map(n => n[0]).join('')}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="mb-8 flex items-center gap-4">
+              <Link 
+                to="/dashboard"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+              </Link>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+                <p className="text-gray-600 mt-1">Manage your personal information and preferences</p>
               </div>
-              {isEditing && (
-                <button className="absolute bottom-0 right-0 w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 transition-colors shadow-lg">
-                  <CameraIcon className="h-5 w-5" />
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                  <PencilIcon className="h-5 w-5" />
+                  Edit Profile
                 </button>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setIsEditing(false);
+                      fetchProfile(); // Reset data
+                    }}
+                    disabled={saving}
+                    className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
+
+            {/* Profile Header Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                {/* Avatar */}
+                <div className="relative group">
+                  {user?.avatar ? (
+                    <img 
+                      src={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/storage/${user.avatar}`} 
+                      alt={profileData.name}
+                      className="w-32 h-32 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 bg-gradient-to-br from-primary-100 to-purple-100 rounded-full flex items-center justify-center text-5xl font-bold text-primary-600">
+                      {profileData.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                  {isEditing && (
+                    <label className="absolute bottom-0 right-0 w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 transition-colors shadow-lg cursor-pointer">
+                      <CameraIcon className="h-5 w-5" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                  )}
+                </div>
 
             {/* Info */}
             <div className="flex-1 text-center md:text-left">
@@ -622,51 +830,54 @@ const ProfilePage = () => {
             {/* Documents Tab */}
             {activeTab === 'documents' && (
               <div className="space-y-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary-500 transition-colors cursor-pointer">
-                  <DocumentArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Your Resume/CV</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Drop your file here or click to browse
-                  </p>
-                  <p className="text-xs text-gray-500">PDF, DOC, DOCX (Max 5MB)</p>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-800">
-                      <p className="font-medium mb-1">Current Resume</p>
-                      <p className="text-blue-700">Resume_2025.pdf (245 KB) - Uploaded Nov 10, 2025</p>
-                    </div>
+                <label className="block">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary-500 transition-colors cursor-pointer">
+                    <DocumentArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Your Resume/CV</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Click to browse or drop your file here
+                    </p>
+                    <p className="text-xs text-gray-500">PDF, DOC, DOCX (Max 5MB)</p>
                   </div>
-                </div>
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx" 
+                    onChange={handleCvChange}
+                    className="hidden"
+                  />
+                </label>
 
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Documents</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <span className="text-lg">📄</span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">Cover_Letter_Template.docx</p>
-                          <p className="text-sm text-gray-600">89 KB</p>
-                        </div>
+                {user?.cv_path && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Current Resume</p>
+                        <a 
+                          href={`${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/storage/${user.cv_path}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-700 hover:underline"
+                        >
+                          {user.cv_path.split('/').pop()} - Click to view
+                        </a>
                       </div>
-                      <button className="text-red-600 hover:text-red-700">
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {!user?.cv_path && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <p className="text-sm text-gray-600">No CV uploaded yet</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
-      </div>
+      </>
+      )}
+    </div>
     </div>
   );
 };

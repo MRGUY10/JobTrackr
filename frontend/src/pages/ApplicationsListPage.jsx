@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import applicationService from '../services/applicationService';
 import { 
   BriefcaseIcon,
   PlusIcon,
@@ -17,7 +18,8 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   XMarkIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
@@ -30,151 +32,86 @@ const ApplicationsListPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingApplication, setEditingApplication] = useState(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // Mock data - replace with API calls
-  const applications = [
-    {
-      id: 1,
-      company: 'Google LLC',
-      position: 'Senior Frontend Developer',
-      status: 'interview',
-      appliedDate: '2025-11-10',
-      salary: '$120k - $150k',
-      location: 'Remote',
-      type: 'Full-time',
-      logo: '🔵',
-      notes: 'Technical round scheduled',
-      contactPerson: 'Sarah Johnson'
-    },
-    {
-      id: 2,
-      company: 'Microsoft',
-      position: 'Full Stack Engineer',
-      status: 'applied',
-      appliedDate: '2025-11-08',
-      salary: '$110k - $140k',
-      location: 'Hybrid',
-      type: 'Full-time',
-      logo: '🟢',
-      notes: 'Waiting for response',
-      contactPerson: 'Mike Chen'
-    },
-    {
-      id: 3,
-      company: 'Meta',
-      position: 'React Developer',
-      status: 'offer',
-      appliedDate: '2025-11-05',
-      salary: '$130k - $160k',
-      location: 'On-site',
-      type: 'Full-time',
-      logo: '🔷',
-      notes: 'Offer received, need to respond by Nov 20',
-      contactPerson: 'Emily Brown'
-    },
-    {
-      id: 4,
-      company: 'Amazon',
-      position: 'Software Development Engineer',
-      status: 'applied',
-      appliedDate: '2025-11-03',
-      salary: '$115k - $145k',
-      location: 'Remote',
-      type: 'Full-time',
-      logo: '🟠',
-      notes: 'Applied through referral',
-      contactPerson: 'David Lee'
-    },
-    {
-      id: 5,
-      company: 'Apple',
-      position: 'iOS Developer',
-      status: 'rejected',
-      appliedDate: '2025-10-28',
-      salary: '$125k - $155k',
-      location: 'On-site',
-      type: 'Full-time',
-      logo: '⚪',
-      notes: 'Not selected after technical round',
-      contactPerson: 'Lisa Wang'
-    },
-    {
-      id: 6,
-      company: 'Netflix',
-      position: 'Senior Software Engineer',
-      status: 'interview',
-      appliedDate: '2025-10-25',
-      salary: '$140k - $170k',
-      location: 'Remote',
-      type: 'Full-time',
-      logo: '🔴',
-      notes: 'Second round next week',
-      contactPerson: 'Tom Anderson'
-    },
-    {
-      id: 7,
-      company: 'Spotify',
-      position: 'UI/UX Engineer',
-      status: 'applied',
-      appliedDate: '2025-10-22',
-      salary: '$105k - $135k',
-      location: 'Hybrid',
-      type: 'Full-time',
-      logo: '🟢',
-      notes: 'Portfolio submitted',
-      contactPerson: 'Anna Martinez'
-    },
-    {
-      id: 8,
-      company: 'Tesla',
-      position: 'Frontend Developer',
-      status: 'wishlist',
-      appliedDate: '2025-10-20',
-      salary: '$100k - $130k',
-      location: 'On-site',
-      type: 'Full-time',
-      logo: '⚡',
-      notes: 'Planning to apply next week',
-      contactPerson: 'John Tesla'
+  // Fetch applications on mount and when filters change
+  useEffect(() => {
+    fetchApplications();
+  }, [selectedStatus, sortBy]);
+
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const filters = {
+        status: selectedStatus !== 'all' ? selectedStatus : null,
+        company: searchQuery || null,
+        sort: sortBy === 'date' ? 'applied_date' : sortBy,
+        order: 'desc'
+      };
+      
+      const data = await applicationService.getApplications(filters);
+      setApplications(data.data || []);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
+      setError(err.response?.data?.message || 'Failed to load applications');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this application?')) return;
+    
+    try {
+      await applicationService.deleteApplication(id);
+      setSuccess('Application deleted successfully');
+      fetchApplications();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete application');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleSearch = () => {
+    fetchApplications();
+  };
 
   const statusOptions = [
     { value: 'all', label: 'All Applications', count: applications.length },
-    { value: 'wishlist', label: 'Wishlist', count: applications.filter(a => a.status === 'wishlist').length },
-    { value: 'applied', label: 'Applied', count: applications.filter(a => a.status === 'applied').length },
-    { value: 'interview', label: 'Interview', count: applications.filter(a => a.status === 'interview').length },
-    { value: 'offer', label: 'Offer', count: applications.filter(a => a.status === 'offer').length },
-    { value: 'rejected', label: 'Rejected', count: applications.filter(a => a.status === 'rejected').length }
+    { value: 'Applied', label: 'Applied', count: applications.filter(a => a.status === 'Applied').length },
+    { value: 'Interview', label: 'Interview', count: applications.filter(a => a.status === 'Interview').length },
+    { value: 'Technical Test', label: 'Technical Test', count: applications.filter(a => a.status === 'Technical Test').length },
+    { value: 'Offer', label: 'Offer', count: applications.filter(a => a.status === 'Offer').length },
+    { value: 'Rejected', label: 'Rejected', count: applications.filter(a => a.status === 'Rejected').length }
   ];
 
   const getStatusColor = (status) => {
     const colors = {
-      wishlist: 'bg-gray-100 text-gray-800',
-      applied: 'bg-blue-100 text-blue-800',
-      interview: 'bg-purple-100 text-purple-800',
-      offer: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
+      'Applied': 'bg-blue-100 text-blue-800',
+      'Interview': 'bg-purple-100 text-purple-800',
+      'Technical Test': 'bg-yellow-100 text-yellow-800',
+      'Offer': 'bg-green-100 text-green-800',
+      'Rejected': 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusText = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    return status;
   };
-
-  const filteredApplications = applications
-    .filter(app => selectedStatus === 'all' || app.status === selectedStatus)
-    .filter(app => 
-      searchQuery === '' || 
-      app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.position.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -349,6 +286,20 @@ const ApplicationsListPage = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            {success}
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -370,6 +321,7 @@ const ApplicationsListPage = () => {
                 placeholder="Search by company or position..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
@@ -377,20 +329,21 @@ const ApplicationsListPage = () => {
             {/* Action Buttons */}
             <div className="flex gap-3">
               <button 
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={handleSearch}
                 className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <FunnelIcon className="h-5 w-5 text-gray-600" />
-                <span className="font-medium">Filters</span>
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-600" />
+                <span className="font-medium hidden sm:inline">Search</span>
               </button>
               
-              <Link 
-                to="/applications/new"
+              <button 
+                onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <PlusIcon className="h-5 w-5" />
-                New Application
-              </Link>
+                <span className="hidden sm:inline">New Application</span>
+                <span className="sm:hidden">New</span>
+              </button>
             </div>
           </div>
         </div>
@@ -422,10 +375,10 @@ const ApplicationsListPage = () => {
         </div>
 
         {/* Sort and View Options */}
-        <div className="flex items-center justify-between mb-6 bg-white rounded-lg border border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between mb-6 bg-white rounded-lg border border-gray-200 px-4 py-3">
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Showing <span className="font-semibold text-gray-900">{filteredApplications.length}</span> applications
+              Showing <span className="font-semibold text-gray-900">{applications.length}</span> applications
             </span>
           </div>
           
@@ -444,9 +397,29 @@ const ApplicationsListPage = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="text-center py-12">
+            <BriefcaseIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No applications yet</h3>
+            <p className="text-gray-600 mb-6">Start tracking your job applications by adding your first one.</p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Your First Application
+            </button>
+          </div>
+        ) : (
+          <>
         {/* Applications Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredApplications.map((app) => (
+          {applications.map((app) => (
             <div 
               key={app.id}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 group"
@@ -479,16 +452,25 @@ const ApplicationsListPage = () => {
                   
                   {activeDropdown === app.id && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                      <button className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left">
-                        <EyeIcon className="h-4 w-4" />
-                        View Details
-                      </button>
-                      <button className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left">
+                      <button 
+                        onClick={() => {
+                          setEditingApplication(app);
+                          setShowAddModal(true);
+                          setActiveDropdown(null);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 w-full text-left"
+                      >
                         <PencilIcon className="h-4 w-4" />
                         Edit
                       </button>
                       <hr className="my-1" />
-                      <button className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 w-full text-left">
+                      <button 
+                        onClick={() => {
+                          handleDelete(app.id);
+                          setActiveDropdown(null);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 w-full text-left"
+                      >
                         <TrashIcon className="h-4 w-4" />
                         Delete
                       </button>
@@ -501,20 +483,15 @@ const ApplicationsListPage = () => {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <CalendarIcon className="h-4 w-4" />
-                  <span>{new Date(app.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span>{new Date(app.applied_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPinIcon className="h-4 w-4" />
-                  <span>{app.location}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <BanknotesIcon className="h-4 w-4" />
-                  <span className="font-medium text-gray-900">{app.salary}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <BriefcaseIcon className="h-4 w-4" />
-                  <span>{app.type}</span>
-                </div>
+                {app.job_url && (
+                  <div className="flex items-center gap-2 text-sm text-primary-600">
+                    <a href={app.job_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      View Job Posting
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -524,48 +501,215 @@ const ApplicationsListPage = () => {
                 </div>
               )}
 
-              {/* Contact Person */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                    <span className="text-primary-700 text-sm font-medium">
-                      {app.contactPerson.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Contact Person</p>
-                    <p className="text-sm font-medium text-gray-900">{app.contactPerson}</p>
-                  </div>
-                </div>
-                
-                <Link 
-                  to={`/applications/${app.id}`}
-                  className="text-primary-600 hover:text-primary-700 font-medium text-sm hover:underline"
-                >
-                  View Details →
-                </Link>
-              </div>
             </div>
           ))}
         </div>
-
-        {/* Empty State */}
-        {filteredApplications.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed border-gray-300">
-            <BriefcaseIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No applications found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery ? 'Try adjusting your search terms' : 'Start by adding your first job application'}
-            </p>
-            <Link 
-              to="/applications/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
-            >
-              <PlusIcon className="h-5 w-5" />
-              Add Your First Application
-            </Link>
-          </div>
+        </>
         )}
+      </div>
+
+      {/* Add/Edit Application Modal */}
+      {showAddModal && (
+        <ApplicationModal
+          application={editingApplication}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingApplication(null);
+          }}
+          onSuccess={() => {
+            fetchApplications();
+            setShowAddModal(false);
+            setEditingApplication(null);
+            setSuccess(editingApplication ? 'Application updated successfully!' : 'Application added successfully!');
+            setTimeout(() => setSuccess(null), 3000);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Application Modal Component
+const ApplicationModal = ({ application, onClose, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    company: application?.company || '',
+    position: application?.position || '',
+    status: application?.status || 'Applied',
+    applied_date: application?.applied_date || new Date().toISOString().split('T')[0],
+    job_url: application?.job_url || '',
+    job_description: application?.job_description || '',
+    notes: application?.notes || ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const { user } = useAuthStore();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (application) {
+        await applicationService.updateApplication(application.id, formData);
+      } else {
+        await applicationService.createApplication(formData);
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save application');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {application ? 'Edit Application' : 'Add New Application'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company Name *
+              </label>
+              <input
+                type="text"
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                placeholder="e.g., Google"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Position *
+              </label>
+              <input
+                type="text"
+                name="position"
+                value={formData.position}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                placeholder="e.g., Senior Developer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              >
+                <option value="Applied">Applied</option>
+                <option value="Interview">Interview</option>
+                <option value="Technical Test">Technical Test</option>
+                <option value="Offer">Offer</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Applied Date *
+              </label>
+              <input
+                type="date"
+                name="applied_date"
+                value={formData.applied_date}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Job URL
+            </label>
+            <input
+              type="url"
+              name="job_url"
+              value={formData.job_url}
+              onChange={handleChange}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Job Description
+            </label>
+            <textarea
+              name="job_description"
+              value={formData.job_description}
+              onChange={handleChange}
+              rows="4"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+              placeholder="Paste the job description here..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes
+            </label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              rows="3"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none resize-none"
+              placeholder="Add any notes about this application..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : (application ? 'Update Application' : 'Add Application')}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

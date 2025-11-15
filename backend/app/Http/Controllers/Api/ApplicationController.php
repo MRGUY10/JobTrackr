@@ -121,7 +121,10 @@ class ApplicationController extends Controller
     )]
     public function store(StoreApplicationRequest $request): JsonResponse
     {
-        $application = Application::create($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = $request->user()->id;
+        
+        $application = Application::create($data);
 
         return response()->json([
             'message' => 'Application created successfully',

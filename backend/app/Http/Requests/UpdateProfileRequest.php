@@ -27,6 +27,17 @@ class UpdateProfileRequest extends FormRequest
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
             'avatar' => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
             'cv' => ['sometimes', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'bio' => ['nullable', 'string', 'max:1000'],
+            'website' => ['nullable', 'url', 'max:255'],
+            'linkedin' => ['nullable', 'url', 'max:255'],
+            'github' => ['nullable', 'url', 'max:255'],
+            'years_of_experience' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'current_company' => ['nullable', 'string', 'max:255'],
+            'education' => ['nullable', 'string', 'max:255'],
+            'skills' => ['nullable', 'json'],
         ];
     }
 }
