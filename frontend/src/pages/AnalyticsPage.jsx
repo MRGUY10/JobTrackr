@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
+import statisticsService from '../services/statisticsService';
 import { 
   ChartBarIcon,
   ArrowTrendingUpIcon,
@@ -36,63 +37,85 @@ const AnalyticsPage = () => {
   const { user, logout } = useAuthStore();
   const [timeRange, setTimeRange] = useState('6months');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Backend state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [overviewStats, setOverviewStats] = useState(null);
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [statusDistribution, setStatusDistribution] = useState([]);
+  const [topCompanies, setTopCompanies] = useState([]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  // Mock data - replace with API
-  const overviewStats = {
-    totalApplications: 48,
-    applicationsTrend: 12.5,
-    successRate: 6.25,
-    successTrend: -2.3,
-    avgResponseTime: 7,
-    responseTrend: -1.5,
-    activeApplications: 23,
-    activeTrend: 8.1
+  // Fetch all statistics
+  useEffect(() => {
+    fetchStatistics();
+  }, [timeRange]);
+
+  const fetchStatistics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch all stats in parallel
+      const [overview, monthly, byStatus, companies] = await Promise.all([
+        statisticsService.getOverview(),
+        statisticsService.getMonthly(),
+        statisticsService.getByStatus(),
+        statisticsService.getTopCompanies(5)
+      ]);
+
+      setOverviewStats({
+        totalApplications: overview.total_applications,
+        successRate: overview.success_rate,
+        byStatus: overview.by_status
+      });
+
+      // Transform monthly data for chart (last 6 months)
+      const currentMonth = new Date().getMonth() + 1;
+      const months = timeRange === '3months' ? 3 : timeRange === '6months' ? 6 : 12;
+      const filteredMonthly = monthly.data
+        .filter((item) => {
+          if (timeRange === '1year') return true;
+          const monthsAgo = currentMonth - item.month;
+          return monthsAgo >= 0 && monthsAgo < months;
+        })
+        .map((item) => ({
+          month: item.month_name.substring(0, 3),
+          applications: item.count
+        }));
+      setMonthlyData(filteredMonthly);
+
+      // Transform status data for pie chart
+      const statusColors = {
+        'Applied': '#3B82F6',
+        'Interview': '#8B5CF6',
+        'Technical Test': '#F59E0B',
+        'Offer': '#10B981',
+        'Rejected': '#EF4444'
+      };
+      const statusData = byStatus.data.map((item) => ({
+        name: item.status,
+        value: item.count,
+        color: statusColors[item.status] || '#6B7280'
+      }));
+      setStatusDistribution(statusData);
+
+      setTopCompanies(companies.data || []);
+      
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load analytics');
+      console.error('Error fetching statistics:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const monthlyData = [
-    { month: 'Jun', applications: 5, interviews: 2, offers: 0, rejected: 1 },
-    { month: 'Jul', applications: 8, interviews: 3, offers: 1, rejected: 2 },
-    { month: 'Aug', applications: 12, interviews: 5, offers: 0, rejected: 4 },
-    { month: 'Sep', applications: 10, interviews: 4, offers: 1, rejected: 3 },
-    { month: 'Oct', applications: 7, interviews: 3, offers: 1, rejected: 2 },
-    { month: 'Nov', applications: 6, interviews: 2, offers: 0, rejected: 0 }
-  ];
 
-  const statusDistribution = [
-    { name: 'Wishlist', value: 2, color: '#6B7280' },
-    { name: 'Applied', value: 15, color: '#3B82F6' },
-    { name: 'Interview', value: 8, color: '#8B5CF6' },
-    { name: 'Offer', value: 3, color: '#10B981' },
-    { name: 'Rejected', value: 12, color: '#EF4444' }
-  ];
-
-  const topCompanies = [
-    { company: 'Google', applications: 5, interviews: 2, offers: 0 },
-    { company: 'Microsoft', applications: 4, interviews: 2, offers: 1 },
-    { company: 'Meta', applications: 3, interviews: 1, offers: 1 },
-    { company: 'Amazon', applications: 3, interviews: 1, offers: 0 },
-    { company: 'Apple', applications: 2, interviews: 1, offers: 0 }
-  ];
-
-  const responseTimeData = [
-    { range: '0-3 days', count: 8 },
-    { range: '4-7 days', count: 15 },
-    { range: '8-14 days', count: 12 },
-    { range: '15-30 days', count: 6 },
-    { range: '30+ days', count: 3 }
-  ];
-
-  const successByJobType = [
-    { type: 'Full-time', applied: 35, offers: 2, rate: 5.7 },
-    { type: 'Contract', applied: 8, offers: 1, rate: 12.5 },
-    { type: 'Part-time', applied: 3, offers: 0, rate: 0 },
-    { type: 'Freelance', applied: 2, offers: 0, rate: 0 }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -310,6 +333,22 @@ const AnalyticsPage = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && overviewStats && (
+          <>
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -319,18 +358,8 @@ const AnalyticsPage = () => {
             </div>
             <div className="flex items-end justify-between">
               <div className="text-3xl font-bold text-gray-900">{overviewStats.totalApplications}</div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                overviewStats.applicationsTrend >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {overviewStats.applicationsTrend >= 0 ? (
-                  <ArrowTrendingUpIcon className="h-4 w-4" />
-                ) : (
-                  <ArrowTrendingDownIcon className="h-4 w-4" />
-                )}
-                {Math.abs(overviewStats.applicationsTrend)}%
-              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">vs last period</p>
+            <p className="text-xs text-gray-500 mt-2">all time</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -340,60 +369,30 @@ const AnalyticsPage = () => {
             </div>
             <div className="flex items-end justify-between">
               <div className="text-3xl font-bold text-gray-900">{overviewStats.successRate}%</div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                overviewStats.successTrend >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {overviewStats.successTrend >= 0 ? (
-                  <ArrowTrendingUpIcon className="h-4 w-4" />
-                ) : (
-                  <ArrowTrendingDownIcon className="h-4 w-4" />
-                )}
-                {Math.abs(overviewStats.successTrend)}%
-              </div>
             </div>
             <p className="text-xs text-gray-500 mt-2">offers received</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Avg Response Time</span>
+              <span className="text-gray-600 text-sm font-medium">In Interview</span>
               <ClockIcon className="h-5 w-5 text-gray-400" />
             </div>
             <div className="flex items-end justify-between">
-              <div className="text-3xl font-bold text-gray-900">{overviewStats.avgResponseTime}d</div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                overviewStats.responseTrend >= 0 ? 'text-red-600' : 'text-green-600'
-              }`}>
-                {overviewStats.responseTrend >= 0 ? (
-                  <ArrowTrendingUpIcon className="h-4 w-4" />
-                ) : (
-                  <ArrowTrendingDownIcon className="h-4 w-4" />
-                )}
-                {Math.abs(overviewStats.responseTrend)}d
-              </div>
+              <div className="text-3xl font-bold text-gray-900">{overviewStats.byStatus.interview || 0}</div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">days to hear back</p>
+            <p className="text-xs text-gray-500 mt-2">active interviews</p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600 text-sm font-medium">Active Applications</span>
+              <span className="text-gray-600 text-sm font-medium">Offers Received</span>
               <CalendarIcon className="h-5 w-5 text-gray-400" />
             </div>
             <div className="flex items-end justify-between">
-              <div className="text-3xl font-bold text-gray-900">{overviewStats.activeApplications}</div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                overviewStats.activeTrend >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {overviewStats.activeTrend >= 0 ? (
-                  <ArrowTrendingUpIcon className="h-4 w-4" />
-                ) : (
-                  <ArrowTrendingDownIcon className="h-4 w-4" />
-                )}
-                {Math.abs(overviewStats.activeTrend)}%
-              </div>
+              <div className="text-3xl font-bold text-gray-900">{overviewStats.byStatus.offer || 0}</div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">in progress</p>
+            <p className="text-xs text-gray-500 mt-2">job offers</p>
           </div>
         </div>
 
@@ -444,74 +443,53 @@ const AnalyticsPage = () => {
 
         {/* Charts Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Response Time Distribution */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Response Time Distribution</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={responseTimeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="range" stroke="#6B7280" />
-                <YAxis stroke="#6B7280" />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3B82F6" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
 
           {/* Top Companies */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Companies Applied</h3>
-            <div className="space-y-4">
-              {topCompanies.map((company, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-lg font-bold text-primary-600">{index + 1}</span>
+            {topCompanies.length > 0 ? (
+              <div className="space-y-4">
+                {topCompanies.map((company, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-purple-100 rounded-lg flex items-center justify-center">
+                        <span className="text-lg font-bold text-primary-600">{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{company.company}</p>
+                        <p className="text-sm text-gray-500">{company.applications_count} applications</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{company.company}</p>
-                      <p className="text-sm text-gray-500">{company.applications} applications</p>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-600">{company.last_status}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{company.interviews} interviews</p>
-                    <p className="text-sm text-green-600 font-medium">{company.offers} offers</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">No data available</p>
+            )}
           </div>
         </div>
 
-        {/* Success Rate by Job Type */}
+        {/* Status Breakdown */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Success Rate by Job Type</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {successByJobType.map((job, index) => (
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Status Breakdown</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {statusDistribution.map((status, index) => (
               <div key={index} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">{job.type}</span>
-                  <span className={`text-sm font-medium ${
-                    job.rate > 10 ? 'text-green-600' : job.rate > 5 ? 'text-yellow-600' : 'text-gray-600'
-                  }`}>
-                    {job.rate}%
-                  </span>
-                </div>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Applied:</span>
-                    <span className="font-medium text-gray-900">{job.applied}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Offers:</span>
-                    <span className="font-medium text-green-600">{job.offers}</span>
-                  </div>
-                </div>
-                <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+                  <span className="font-semibold text-gray-900">{status.name}</span>
                   <div 
-                    className="bg-gradient-to-r from-primary-600 to-purple-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(job.rate * 5, 100)}%` }}
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: status.color }}
                   />
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{status.value}</div>
+                <div className="text-xs text-gray-500">
+                  {overviewStats.totalApplications > 0 
+                    ? `${Math.round((status.value / overviewStats.totalApplications) * 100)}%` 
+                    : '0%'} of total
                 </div>
               </div>
             ))}
@@ -529,24 +507,26 @@ const AnalyticsPage = () => {
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start gap-2">
                   <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Your success rate is <strong>6.25%</strong>, which is above the industry average of 2-5%</span>
+                  <span>You have submitted <strong>{overviewStats.totalApplications}</strong> job applications</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Contract positions show the highest success rate at <strong>12.5%</strong></span>
+                  <span>Your success rate is <strong>{overviewStats.successRate}%</strong> {overviewStats.successRate >= 2 ? '- Great job!' : '- Keep applying!'}</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <XCircleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <span>Consider following up after 7 days - most responses come within this timeframe</span>
+                  <CheckCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <span>You have <strong>{overviewStats.byStatus.interview || 0}</strong> active interviews in progress</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Your application volume increased by <strong>12.5%</strong> this period - great momentum!</span>
+                  <span>You've received <strong>{overviewStats.byStatus.offer || 0}</strong> job offers - Congratulations!</span>
                 </li>
               </ul>
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
