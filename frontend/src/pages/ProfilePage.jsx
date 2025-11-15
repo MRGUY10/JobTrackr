@@ -14,7 +14,9 @@ import {
   ArrowLeftIcon,
   DocumentArrowUpIcon,
   CheckCircleIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon } from '@heroicons/react/24/outline';
 
@@ -23,6 +25,7 @@ const ProfilePage = () => {
   const { user, logout } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -87,6 +90,19 @@ const ProfilePage = () => {
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {isMobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
+            </button>
+
+            {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white text-xl font-bold">JT</span>
@@ -94,6 +110,7 @@ const ProfilePage = () => {
               <span className="text-xl font-bold text-gray-900">JobTrackr</span>
             </Link>
 
+            {/* Navigation Links - Desktop */}
             <div className="hidden md:flex items-center gap-6">
               <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                 Dashboard
@@ -121,22 +138,121 @@ const ProfilePage = () => {
               </Link>
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* Right Side Icons */}
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </Link>
-              <Link to="/profile" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              
+              <Link to="/profile" className="hidden sm:flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
                 <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
               </Link>
-              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+
+              <button
+                onClick={handleLogout}
+                className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Logout"
+              >
                 <ArrowRightOnRectangleIcon className="h-6 w-6" />
                 <span className="hidden md:block text-sm font-medium">Logout</span>
               </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 bg-white">
+            <div className="px-4 py-4 space-y-2">
+              <Link 
+                to="/dashboard" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                to="/applications" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Applications
+              </Link>
+              <Link 
+                to="/kanban" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Kanban
+              </Link>
+              <Link 
+                to="/documents" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Documents
+              </Link>
+              <Link 
+                to="/analytics" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Analytics
+              </Link>
+              <Link 
+                to="/job-search" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Job Search
+              </Link>
+              <Link 
+                to="/ai-analyzer" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                AI Analyzer
+              </Link>
+              <Link 
+                to="/calendar" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Calendar
+              </Link>
+              <Link 
+                to="/settings" 
+                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Settings
+              </Link>
+              
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <Link 
+                  to="/profile" 
+                  className="flex items-center gap-3 px-4 py-3 text-primary-600 bg-primary-50 rounded-lg font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <UserCircleIcon className="h-6 w-6 text-primary-600" />
+                  {user?.name || 'Profile'}
+                </Link>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+                >
+                  <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Main Content */}
