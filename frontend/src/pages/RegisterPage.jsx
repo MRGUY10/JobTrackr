@@ -53,9 +53,7 @@ const RegisterPage = () => {
     }
 
     // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {

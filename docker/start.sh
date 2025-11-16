@@ -27,6 +27,9 @@ php /var/www/html/artisan view:cache
 echo "Generating API documentation..."
 php /var/www/html/artisan l5-swagger:generate || echo "Swagger generation skipped"
 
+# Create supervisor log directory
+mkdir -p /var/log/supervisor
+
 # Start supervisor
 echo "Starting services..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

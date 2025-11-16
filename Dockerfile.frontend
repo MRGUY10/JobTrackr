@@ -12,6 +12,9 @@ RUN npm ci
 # Copy source code
 COPY frontend/ ./
 
+# Set API URL for build
+ENV VITE_API_BASE_URL=http://localhost:8080/api
+
 # Build for production
 RUN npm run build
 

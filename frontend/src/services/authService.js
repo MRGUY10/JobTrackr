@@ -5,7 +5,9 @@ const authService = {
   async getCsrfToken() {
     try {
       // CSRF cookie endpoint is on the main domain, not /api
-      await fetch('http://localhost:8000/sanctum/csrf-cookie', {
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+      const csrfUrl = baseURL.replace('/api', '/sanctum/csrf-cookie');
+      await fetch(csrfUrl, {
         credentials: 'include',
       });
     } catch (error) {
@@ -30,6 +32,7 @@ const authService = {
     const response = await api.post('/auth/register', {
       name: userData.name,
       email: userData.email,
+      phone: userData.phone,
       password: userData.password,
       password_confirmation: userData.password_confirmation,
     });

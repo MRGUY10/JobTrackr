@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // PostgreSQL compatible: Drop and recreate the column
-        Schema::table('documents', function (Blueprint $table) {
-            $table->dropColumn('type');
-        });
+        // Check if column exists before dropping
+        if (Schema::hasColumn('documents', 'type')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->dropColumn('type');
+            });
+        }
         
         Schema::table('documents', function (Blueprint $table) {
-            $table->string('type', 255)->default('other')->after('user_id');
+            $table->string('type', 255)->default('other')->after('application_id');
         });
     }
 
