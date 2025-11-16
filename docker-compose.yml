@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: jobtrackr-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_change_me
+      MYSQL_DATABASE: jobtrackr
+      MYSQL_USER: jobtrackr_user
+      MYSQL_PASSWORD: jobtrackr_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - jobtrackr-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: jobtrackr-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root_password_change_me
+      UPLOAD_LIMIT: 50M
+    ports:
+      - "8081:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - jobtrackr-network
+
+  # Backend (Laravel API)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: jobtrackr-backend
+    restart: unless-stopped
+    environment:
+      APP_NAME: JobTrackr
+      APP_ENV: production
+      APP_KEY: base64:EX6JwlCC1GsQgLaZl0LWz3urw21fatgXL/0Bdqmz8OM=
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+      
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: jobtrackr
+      DB_USERNAME: jobtrackr_user
+      DB_PASSWORD: jobtrackr_password
+      
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+      
+      MAIL_MAILER: smtp
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 587
+      MAIL_USERNAME: kamdem.guy@institutsaintjean.org
+      MAIL_PASSWORD: osurrusawvgooxam
+      MAIL_ENCRYPTION: tls
+      MAIL_FROM_ADDRESS: kamdem.guy@institutsaintjean.org
+      MAIL_FROM_NAME: JobTrackr
+      
+      SANCTUM_STATEFUL_DOMAINS: localhost,127.0.0.1
+      SESSION_DOMAIN: ""
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - jobtrackr-network
+    volumes:
+      - backend_storage:/var/www/html/storage
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: jobtrackr-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - jobtrackr-network
+
+volumes:
+  mysql_data:
+    driver: local
+  backend_storage:
+    driver: local
+
+networks:
+  jobtrackr-network:
+    driver: bridge
