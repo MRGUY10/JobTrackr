@@ -1,3 +1,23 @@
 {
-    "postman.settings.dotenv-detection-notification-visibility": false
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    "extensions.experimental.affinity": {
+        "GitHub.copilot": 1,
+        "GitHub.copilot-chat": 1
+    },
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/vendor/**": true,
+        "**/storage/**": true,
+        "**/.git/objects/**": true,
+        "**/bootstrap/cache/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/vendor": true,
+        "**/storage": true,
+        "**/bootstrap/cache": true,
+        "**/.git": true
+    },
+    "typescript.tsserver.maxTsServerMemory": 4096,
+    "files.maxMemoryForLargeFilesMB": 4096
 }
