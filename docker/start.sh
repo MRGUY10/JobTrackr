@@ -7,6 +7,10 @@ echo "Starting JobTrackr application..."
 # Create supervisor log directory
 mkdir -p /var/log/supervisor
 
+# Create PHP-FPM socket directory
+mkdir -p /var/run
+chown www-data:www-data /var/run
+
 # Wait for database to be ready
 echo "Waiting for database connection..."
 until php /var/www/html/artisan db:show 2>/dev/null; do
