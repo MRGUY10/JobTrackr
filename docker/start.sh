@@ -4,6 +4,9 @@ set -e
 
 echo "Starting JobTrackr application..."
 
+# Create supervisor log directory
+mkdir -p /var/log/supervisor
+
 # Wait for database to be ready
 echo "Waiting for database connection..."
 until php /var/www/html/artisan db:show 2>/dev/null; do
