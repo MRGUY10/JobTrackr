@@ -31,10 +31,10 @@ class ApplicationTest extends TestCase
 
         $response = $this->actingAs($user)
             ->postJson('/api/applications', [
-                'company_name' => 'Tech Corp',
+                'company' => 'Tech Corp',
                 'position' => 'Software Engineer',
                 'job_url' => 'https://example.com/job',
-                'status' => 'applied',
+                'status' => 'Applied',
                 'applied_date' => now()->format('Y-m-d'),
                 'notes' => 'Great opportunity',
             ]);
@@ -42,16 +42,16 @@ class ApplicationTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonStructure([
                 'message',
-                'application' => [
+                'data' => [
                     'id',
-                    'company_name',
+                    'company',
                     'position',
                     'status',
                 ],
             ]);
 
         $this->assertDatabaseHas('applications', [
-            'company_name' => 'Tech Corp',
+            'company' => 'Tech Corp',
             'position' => 'Software Engineer',
             'user_id' => $user->id,
         ]);
@@ -63,14 +63,14 @@ class ApplicationTest extends TestCase
         $user = User::factory()->create();
         $application = Application::factory()->create([
             'user_id' => $user->id,
-            'status' => 'applied',
+            'status' => 'Applied',
         ]);
 
         $response = $this->actingAs($user)
             ->putJson("/api/applications/{$application->id}", [
-                'company_name' => 'Tech Corp Updated',
+                'company' => 'Tech Corp Updated',
                 'position' => 'Senior Software Engineer',
-                'status' => 'interview',
+                'status' => 'Interview',
                 'applied_date' => $application->applied_date->format('Y-m-d'),
             ]);
 
@@ -81,9 +81,9 @@ class ApplicationTest extends TestCase
 
         $this->assertDatabaseHas('applications', [
             'id' => $application->id,
-            'company_name' => 'Tech Corp Updated',
+            'company' => 'Tech Corp Updated',
             'position' => 'Senior Software Engineer',
-            'status' => 'interview',
+            'status' => 'Interview',
         ]);
     }
 
@@ -96,9 +96,9 @@ class ApplicationTest extends TestCase
 
         $response = $this->actingAs($user)
             ->putJson("/api/applications/{$application->id}", [
-                'company_name' => 'Updated Company',
+                'company' => 'Updated Company',
                 'position' => 'Updated Position',
-                'status' => 'interview',
+                'status' => 'Interview',
                 'applied_date' => now()->format('Y-m-d'),
             ]);
 
@@ -148,9 +148,9 @@ class ApplicationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'application' => [
+                'data' => [
                     'id' => $application->id,
-                    'company_name' => $application->company_name,
+                    'company' => $application->company,
                 ],
             ]);
     }
@@ -164,7 +164,7 @@ class ApplicationTest extends TestCase
             ->postJson('/api/applications', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['company_name', 'position', 'status', 'applied_date']);
+            ->assertJsonValidationErrors(['company', 'position', 'applied_date']);
     }
 
     /** @test */
@@ -174,7 +174,7 @@ class ApplicationTest extends TestCase
 
         $response = $this->actingAs($user)
             ->postJson('/api/applications', [
-                'company_name' => 'Tech Corp',
+                'company' => 'Tech Corp',
                 'position' => 'Developer',
                 'status' => 'invalid_status',
                 'applied_date' => now()->format('Y-m-d'),
@@ -188,12 +188,12 @@ class ApplicationTest extends TestCase
     public function user_can_filter_applications_by_status()
     {
         $user = User::factory()->create();
-        Application::factory()->create(['user_id' => $user->id, 'status' => 'applied']);
-        Application::factory()->create(['user_id' => $user->id, 'status' => 'interview']);
-        Application::factory()->create(['user_id' => $user->id, 'status' => 'interview']);
+        Application::factory()->create(['user_id' => $user->id, 'status' => 'Applied']);
+        Application::factory()->create(['user_id' => $user->id, 'status' => 'Interview']);
+        Application::factory()->create(['user_id' => $user->id, 'status' => 'Interview']);
 
         $response = $this->actingAs($user)
-            ->getJson('/api/applications?status=interview');
+            ->getJson('/api/applications?status=Interview');
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');

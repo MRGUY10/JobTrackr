@@ -35,14 +35,14 @@ class ApplicationModelTest extends TestCase
     public function application_has_fillable_attributes()
     {
         $application = Application::factory()->create([
-            'company_name' => 'Test Company',
+            'company' => 'Test Company',
             'position' => 'Developer',
-            'status' => 'applied',
+            'status' => 'Applied',
         ]);
 
-        $this->assertEquals('Test Company', $application->company_name);
+        $this->assertEquals('Test Company', $application->company);
         $this->assertEquals('Developer', $application->position);
-        $this->assertEquals('applied', $application->status);
+        $this->assertEquals('Applied', $application->status);
     }
 
     /** @test */
