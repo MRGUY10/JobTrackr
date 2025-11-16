@@ -98,6 +98,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: http://4.178.35.142:8080/api
     container_name: jobtrackr-frontend
     restart: unless-stopped
     environment:

@@ -12,8 +12,9 @@ RUN npm ci
 # Copy source code
 COPY frontend/ ./
 
-# Set API URL for build
-ENV VITE_API_BASE_URL=http://localhost:8080/api
+# Set API URL for build (can be overridden in docker-compose)
+ARG VITE_API_BASE_URL=http://4.178.35.142:8080/api
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build for production
 RUN npm run build
