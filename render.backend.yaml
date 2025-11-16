@@ -64,6 +64,10 @@ services:
         value: JobTrackr
       
       - key: SANCTUM_STATEFUL_DOMAINS
-        value: localhost,127.0.0.1
+        value: jobtrackr-backend.onrender.com,localhost,127.0.0.1
       - key: SESSION_DOMAIN
         value: ""
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://jobtrackr-backend.onrender.com,http://localhost:5173
+      - key: FRONTEND_URL
+        value: https://jobtrackr-backend.onrender.com

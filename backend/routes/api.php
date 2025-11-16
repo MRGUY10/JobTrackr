@@ -13,6 +13,20 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
+| Health Check (Public)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'JobTrackr API is running',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Authentication Routes (Public)
 |--------------------------------------------------------------------------
 */
