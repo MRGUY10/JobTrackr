@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import Navigation from '../components/Navigation';
 import applicationService from '../services/applicationService';
 import documentService from '../services/documentService';
 import { 
@@ -21,9 +20,11 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import Navigation from '../components/Navigation';
 
 const DocumentsPage = () => {
   const navigate = useNavigate();
+
   const { user, logout } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -39,103 +40,107 @@ const DocumentsPage = () => {
   const [documentType, setDocumentType] = useState('cv');
   const [selectedApplication, setSelectedApplication] = useState('');
 
-  // Stats and categories
-  const [stats, setStats] = useState({ total: 0, size: '0 MB', resumes: 0, recent: 0 });
-  const [categories, setCategories] = useState([
-    { value: 'all', label: 'All', count: 0 },
-    { value: 'cv', label: 'Resumes', count: 0 },
-    { value: 'cover_letter', label: 'Cover Letters', count: 0 },
-    { value: 'portfolio', label: 'Portfolios', count: 0 },
-    { value: 'certificate', label: 'Certificates', count: 0 },
-    { value: 'reference', label: 'References', count: 0 },
-    { value: 'other', label: 'Other', count: 0 },
-  ]);
-
-  // Fetch applications and documents
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        // Fetch applications
-        const appsResponse = await applicationService.getApplications();
-        const apps = appsResponse.data || appsResponse;
-        setApplications(apps);
-        // Fetch documents for each application
-        let allDocuments = [];
-        for (const app of apps) {
-          try {
-            const docsResponse = await documentService.getDocuments(app.id);
-            const docs = (docsResponse.data || docsResponse).map(doc => ({
-              ...doc,
-              applicationName: `${app.company} - ${app.position}`,
-              applicationId: app.id
-            }));
-            allDocuments.push(...docs);
-          } catch (err) {
-            // Ignore per-app errors
-          }
-        }
-        setDocuments(allDocuments);
-        // Calculate stats
-        const total = allDocuments.length;
-        const size = (allDocuments.reduce((acc, doc) => acc + (doc.file_size || 0), 0) / 1024 / 1024).toFixed(2) + ' MB';
-        const resumes = allDocuments.filter(doc => doc.type === 'cv').length;
-        const recent = allDocuments.filter(doc => {
-          const d = new Date(doc.created_at);
-          const now = new Date();
-          return (now - d) / (1000 * 60 * 60 * 24) < 7;
-        }).length;
-        setStats({ total, size, resumes, recent });
-        // Calculate categories
-        setCategories(cats => cats.map(cat => ({
-          ...cat,
-          count: cat.value === 'all' ? total : allDocuments.filter(doc => doc.type === cat.value).length
-        })));
-      } catch (err) {
-        setError('Failed to load documents or applications');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    fetchApplicationsAndDocuments();
+    // eslint-disable-next-line
   }, []);
 
-  // Filtered documents
-  const filteredDocuments = documents.filter(doc =>
-    (selectedCategory === 'all' || doc.type === selectedCategory) &&
-    (searchQuery === '' ||
-      doc.original_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.applicationName && doc.applicationName.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  );
-
-  // Format file size
-  const formatFileSize = (size) => {
-    if (!size) return '0 B';
-    if (size < 1024) return size + ' B';
-    if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
-    return (size / 1024 / 1024).toFixed(2) + ' MB';
+  const fetchApplicationsAndDocuments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Fetch all applications
+      const appsResponse = await applicationService.getApplications();
+      const apps = appsResponse.data || appsResponse;
+      setApplications(apps);
+      // Fetch documents for each application
+      const allDocuments = [];
+      for (const app of apps) {
+        try {
+          const docsResponse = await documentService.getDocuments(app.id);
+          const docs = (docsResponse.data || docsResponse).map(doc => ({
+            ...doc,
+            applicationName: `${app.company} - ${app.position}`,
+            applicationId: app.id
+          }));
+          allDocuments.push(...docs);
+        } catch (err) {
+          console.error(`Failed to fetch documents for application ${app.id}:`, err);
+        }
+      }
+      setDocuments(allDocuments);
+    } catch (err) {
+      setError('Failed to load applications or documents');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handlers (stubs for now)
-  const handleDownload = (doc) => {
-    // Implement download logic
-    window.open(doc.url, '_blank');
-  };
-  const handleDelete = (doc) => {
-    // Implement delete logic
-    alert('Delete not implemented');
-  };
-  const handleUpload = () => {
-    // Implement upload logic
-    alert('Upload not implemented');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
-  const getFileExtension = (filename) => {
-    return filename.split('.').pop().toUpperCase();
+  const handleDownload = async (doc) => {
+    try {
+      await documentService.downloadDocument(doc.id, doc.original_name);
+    } catch (err) {
+      alert('Failed to download document');
+    }
   };
 
+  const handleDelete = async (doc) => {
+    if (!window.confirm(`Are you sure you want to delete "${doc.original_name}"?`)) {
+      return;
+    }
+    try {
+      await documentService.deleteDocument(doc.id);
+      await fetchApplicationsAndDocuments();
+      setActiveDropdown(null);
+      alert('Document deleted successfully!');
+    } catch (err) {
+      alert('Failed to delete document');
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !selectedApplication) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('type', documentType);
+      formData.append('application_id', selectedApplication);
+      await documentService.uploadDocument(formData);
+      setShowUploadModal(false);
+      setSelectedFile(null);
+      setDocumentType('cv');
+      setSelectedApplication('');
+      await fetchApplicationsAndDocuments();
+      alert('Document uploaded successfully!');
+    } catch (err) {
+      alert('Failed to upload document');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Helper functions
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getFileExtension = (filename) => filename.split('.').pop().toUpperCase();
   const getFileColor = (type) => {
     const colors = {
       cv: 'bg-blue-100 text-blue-700',
@@ -147,7 +152,6 @@ const DocumentsPage = () => {
     };
     return colors[type] || colors.other;
   };
-
   const getFileIcon = (filename) => {
     const ext = filename.split('.').pop().toLowerCase();
     const icons = {
@@ -160,6 +164,31 @@ const DocumentsPage = () => {
     };
     return icons[ext] || '📎';
   };
+
+  const categories = [
+    { value: 'all', label: 'All Documents', count: documents.length },
+    { value: 'cv', label: 'Resumes', count: documents.filter(d => d.type === 'cv').length },
+    { value: 'cover_letter', label: 'Cover Letters', count: documents.filter(d => d.type === 'cover_letter').length },
+    { value: 'portfolio', label: 'Portfolio', count: documents.filter(d => d.type === 'portfolio').length },
+    { value: 'certificate', label: 'Certificates', count: documents.filter(d => d.type === 'certificate').length },
+    { value: 'reference', label: 'References', count: documents.filter(d => d.type === 'reference').length },
+    { value: 'other', label: 'Other', count: documents.filter(d => d.type === 'other').length }
+  ];
+
+  const stats = {
+    total: documents.length,
+    size: formatFileSize(documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0)),
+    resumes: documents.filter(d => d.type === 'cv').length,
+    recent: documents.filter(d => new Date(d.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length
+  };
+
+  const filteredDocuments = documents
+    .filter(doc => selectedCategory === 'all' || doc.type === selectedCategory)
+    .filter(doc => 
+      searchQuery === '' || 
+      doc.original_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.applicationName && doc.applicationName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
   return (
     <div className="min-h-screen bg-gray-50">
