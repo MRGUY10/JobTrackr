@@ -1,5 +1,33 @@
+import { useDroppable } from '@dnd-kit/core';
+
+// KanbanColumn component for rendering each column in the Kanban board
+const KanbanColumn = ({ status, title, applications = [], color }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${status}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 min-w-[320px] max-w-xs bg-gray-50 rounded-xl border border-gray-200 p-4 transition-shadow ${isOver ? 'ring-2 ring-primary-500' : ''}`}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <span className={`w-3 h-3 rounded-full ${color}`}></span>
+        <h2 className="font-semibold text-gray-800 text-lg">{title}</h2>
+        <span className="ml-auto text-xs text-gray-500">{applications.length}</span>
+      </div>
+      <SortableContext items={applications.map(app => app.id)} strategy={verticalListSortingStrategy}>
+        {applications.length === 0 ? (
+          <div className="text-gray-400 text-sm text-center py-8">No applications</div>
+        ) : (
+          applications.map((application) => (
+            <SortableApplicationCard key={application.id} application={application} />
+          ))
+        )}
+      </SortableContext>
+    </div>
+  );
+};
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Navigation from '../components/Navigation';
 import useAuthStore from '../store/authStore';
 import applicationService from '../services/applicationService';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -35,7 +63,6 @@ const SortableApplicationCard = ({ application }) => {
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-
   return (
     <div
       ref={setNodeRef}
@@ -78,55 +105,6 @@ const SortableApplicationCard = ({ application }) => {
           <p className="text-xs text-gray-600 line-clamp-2">{application.notes}</p>
         </div>
       )}
-    </div>
-  );
-};
-
-// Droppable Column Component
-const DroppableColumn = ({ id, children }) => {
-  const { setNodeRef } = useSortable({ id });
-  
-  return (
-    <div ref={setNodeRef} className="h-full">
-      {children}
-    </div>
-  );
-};
-
-// Kanban Column Component
-const KanbanColumn = ({ status, title, applications, color }) => {
-  const applicationIds = applications.map(app => app.id);
-  const droppableId = `column-${status}`;
-
-  return (
-    <div className="bg-gray-50 rounded-xl p-4 min-w-[300px] flex-shrink-0">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${color}`}></div>
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <span className="px-2 py-0.5 bg-white rounded-full text-xs font-medium text-gray-600">
-            {applications.length}
-          </span>
-        </div>
-        <button className="p-1 hover:bg-white rounded transition-colors">
-          <PlusIcon className="h-4 w-4 text-gray-600" />
-        </button>
-      </div>
-
-      <SortableContext items={[droppableId, ...applicationIds]} strategy={verticalListSortingStrategy}>
-        <DroppableColumn id={droppableId}>
-          <div className="space-y-3 min-h-[200px]">
-            {applications.map((application) => (
-              <SortableApplicationCard key={application.id} application={application} />
-            ))}
-            {applications.length === 0 && (
-              <div className="text-center py-8 text-gray-400 text-sm">
-                Drop applications here
-              </div>
-            )}
-          </div>
-        </DroppableColumn>
-      </SortableContext>
     </div>
   );
 };
@@ -258,90 +236,17 @@ const KanbanPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="h-6 w-6" />
-              ) : (
-                <Bars3Icon className="h-6 w-6" />
-              )}
-            </button>
+      {/* Shared Navigation Header */}
+      <Navigation />
 
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-xl font-bold">JT</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">JobTrackr</span>
-            </Link>
-
-            {/* Navigation Links - Desktop */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Dashboard
-              </Link>
-              <Link to="/applications" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Applications
-              </Link>
-              <Link to="/kanban" className="text-primary-600 font-medium border-b-2 border-primary-600 pb-1">
-                Kanban
-              </Link>
-              <Link to="/documents" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Documents
-              </Link>
-              <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Analytics
-              </Link>
-              <Link to="/job-search" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Job Search
-              </Link>
-              <Link to="/ai-analyzer" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                AI Analyzer
-              </Link>
-              <Link to="/settings" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Settings
-              </Link>
-            </div>
-
-            {/* Right Side Icons */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                <BellIcon className="h-6 w-6" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </Link>
-              
-              <Link to="/profile" className="hidden sm:flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
-                <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
-              </Link>
-
-              <button
-                onClick={handleLogout}
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <ArrowRightOnRectangleIcon className="h-6 w-6" />
-                <span className="hidden md:block text-sm font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-4 py-4 space-y-2">
-              <Link 
-                to="/dashboard" 
-                className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-gray-200 bg-white">
+          <div className="px-4 py-4 space-y-2">
+            <Link 
+              to="/dashboard" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
               >
                 Dashboard
               </Link>
@@ -425,7 +330,7 @@ const KanbanPage = () => {
             </div>
           </div>
         )}
-      </nav>
+      
 
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -494,6 +399,7 @@ const KanbanPage = () => {
         ) : (
           <>
         {/* Kanban Board */}
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -501,17 +407,20 @@ const KanbanPage = () => {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="flex gap-6 overflow-x-auto pb-4">
-            {columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                status={column.id}
-                title={column.title}
-                applications={groupedApplications[column.id]}
-                color={column.color}
-              />
-            ))}
-          </div>
+          {/* SortableContext for columns */}
+          <SortableContext items={columns.map(col => `column-${col.id}`)}>
+            <div className="flex gap-6 overflow-x-auto pb-4">
+              {columns.map((column) => (
+                <KanbanColumn
+                  key={column.id}
+                  status={column.id}
+                  title={column.title}
+                  applications={groupedApplications[column.id]}
+                  color={column.color}
+                />
+              ))}
+            </div>
+          </SortableContext>
 
           <DragOverlay>
             {activeApplication ? (
