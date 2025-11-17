@@ -161,10 +161,29 @@ University of Technology (2018)`;
     <div className="min-h-screen bg-gray-50">
       {/* Shared Navigation Header */}
       <Navigation />
-      {/* Mobile Menu Only (if open) */}
+      {/* Mobile Menu Button (Hamburger) - Professional look */}
+      {!isMobileMenuOpen && (
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden p-2 border border-gray-200 bg-white shadow-lg rounded-full fixed top-4 left-4 z-50 flex items-center justify-center transition-all duration-200 hover:scale-105 hover:border-primary-400 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          aria-label="Open mobile menu"
+        >
+          <Bars3Icon className="h-7 w-7 text-primary-600 transition-colors duration-200" />
+        </button>
+      )}
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <div className="px-4 py-4 space-y-2">
+        <div className="fixed inset-0 z-50 bg-white md:hidden flex flex-col overflow-y-auto">
+          <div className="flex justify-end p-4">
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 border border-gray-200 bg-white shadow-lg rounded-full transition-all duration-200 hover:scale-105 hover:border-primary-400 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-300"
+              aria-label="Close mobile menu"
+            >
+              <XMarkIcon className="h-7 w-7 text-primary-600 transition-colors duration-200" />
+            </button>
+          </div>
+          <div className="px-4 py-4 space-y-2 flex-1">
             <Link 
               to="/dashboard" 
               className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"

@@ -122,6 +122,115 @@ const AnalyticsPage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Shared Navigation Header */}
       <Navigation />
+      {/* Mobile Menu Button (Hamburger) - Professional look */}
+      {!isMobileMenuOpen && (
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden p-2 border border-gray-200 bg-white shadow-lg rounded-full fixed top-4 left-4 z-50 flex items-center justify-center transition-all duration-200 hover:scale-105 hover:border-primary-400 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          aria-label="Open mobile menu"
+        >
+          <Bars3Icon className="h-7 w-7 text-primary-600 transition-colors duration-200" />
+        </button>
+      )}
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-white md:hidden flex flex-col overflow-y-auto">
+          <div className="flex justify-end p-4">
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 border border-gray-200 bg-white shadow-lg rounded-full transition-all duration-200 hover:scale-105 hover:border-primary-400 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-300"
+              aria-label="Close mobile menu"
+            >
+              <XMarkIcon className="h-7 w-7 text-primary-600 transition-colors duration-200" />
+            </button>
+          </div>
+          <div className="px-4 py-4 space-y-2 flex-1">
+            <Link 
+              to="/dashboard" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Dashboard
+            </Link>
+            <Link 
+              to="/applications" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Applications
+            </Link>
+            <Link 
+              to="/kanban" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Kanban
+            </Link>
+            <Link 
+              to="/documents" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Documents
+            </Link>
+            <Link 
+              to="/analytics" 
+              className="block px-4 py-3 text-primary-600 bg-primary-50 rounded-lg font-medium"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Analytics
+            </Link>
+            <Link 
+              to="/job-search" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Job Search
+            </Link>
+            <Link 
+              to="/ai-analyzer" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              AI Analyzer
+            </Link>
+            <Link 
+              to="/calendar" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Calendar
+            </Link>
+            <Link 
+              to="/settings" 
+              className="block px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Settings
+            </Link>
+            <div className="border-t border-gray-200 pt-2 mt-2">
+              <Link 
+                to="/profile" 
+                className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <UserCircleIcon className="h-6 w-6 text-primary-600" />
+                {user?.name || 'Profile'}
+              </Link>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+              >
+                <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
