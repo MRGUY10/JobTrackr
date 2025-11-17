@@ -43,29 +43,14 @@ const Navigation = () => {
                 <span className="text-white text-xl font-bold">JT</span>
               </div>
             </Link>
-            
             <div className="hidden md:flex items-center gap-6">
-              <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Dashboard
-              </Link>
-              <Link to="/applications" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Applications
-              </Link>
-              <Link to="/kanban" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Kanban
-              </Link>
-              <Link to="/documents" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Documents
-              </Link>
-              <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Analytics
-              </Link>
-              <Link to="/job-search" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Job Search
-              </Link>
-              <Link to="/ai-analyzer" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                AI Analyzer
-              </Link>
+              <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Dashboard</Link>
+              <Link to="/applications" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Applications</Link>
+              <Link to="/kanban" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Kanban</Link>
+              <Link to="/documents" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Documents</Link>
+              <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Analytics</Link>
+              <Link to="/job-search" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">Job Search</Link>
+              <Link to="/ai-analyzer" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">AI Analyzer</Link>
             </div>
           </div>
 
@@ -77,7 +62,7 @@ const Navigation = () => {
               <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
             </Link>
 
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown Only */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -87,44 +72,21 @@ const Navigation = () => {
                 <span className="hidden md:block text-sm font-medium">{user?.name || 'User'}</span>
                 <ChevronDownIcon className={`h-4 w-4 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-
-              {/* Dropdown Menu */}
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   <div className="px-4 py-3 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
                     <p className="text-sm text-gray-500 truncate">{user?.email || 'user@example.com'}</p>
                   </div>
-
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    onClick={() => setIsProfileDropdownOpen(false)}
-                  >
-                    <UserCircleIcon className="h-5 w-5" />
-                    Profile
+                  <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" onClick={() => setIsProfileDropdownOpen(false)}>
+                    <UserCircleIcon className="h-5 w-5" />Profile
                   </Link>
-
-                  <Link
-                    to="/settings"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    onClick={() => setIsProfileDropdownOpen(false)}
-                  >
-                    <Cog6ToothIcon className="h-5 w-5" />
-                    Settings
+                  <Link to="/settings" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" onClick={() => setIsProfileDropdownOpen(false)}>
+                    <Cog6ToothIcon className="h-5 w-5" />Settings
                   </Link>
-
                   <div className="border-t border-gray-200 my-1"></div>
-
-                  <button
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
-                      handleLogout();
-                    }}
-                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                    Logout
+                  <button onClick={() => { setIsProfileDropdownOpen(false); handleLogout(); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                    <ArrowRightOnRectangleIcon className="h-5 w-5" />Logout
                   </button>
                 </div>
               )}

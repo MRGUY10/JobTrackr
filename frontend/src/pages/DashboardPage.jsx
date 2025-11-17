@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Navigation from '../components/Navigation';
 import { 
   BriefcaseIcon, 
   PlusIcon, 
@@ -104,82 +105,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="h-6 w-6" />
-              ) : (
-                <Bars3Icon className="h-6 w-6" />
-              )}
-            </button>
-
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white text-xl font-bold">JT</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">JobTrackr</span>
-            </Link>
-
-            {/* Navigation Links - Desktop */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link to="/dashboard" className="text-primary-600 font-medium border-b-2 border-primary-600 pb-1">
-                Dashboard
-              </Link>
-              <Link to="/applications" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Applications
-              </Link>
-              <Link to="/kanban" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Kanban
-              </Link>
-              <Link to="/documents" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Documents
-              </Link>
-              <Link to="/analytics" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Analytics
-              </Link>
-              <Link to="/job-search" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Job Search
-              </Link>
-              <Link to="/ai-analyzer" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                AI Analyzer
-              </Link>
-              <Link to="/settings" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                Settings
-              </Link>
-            </div>
-
-            {/* Right Side Icons */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                <BellIcon className="h-6 w-6" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </Link>
-              
-              <Link to="/profile" className="hidden sm:flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <UserCircleIcon className="h-8 w-8 text-primary-600 hover:text-primary-700" />
-                <span className="hidden md:block text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
-              </Link>
-
-              <button
-                onClick={handleLogout}
-                className="hidden sm:flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <ArrowRightOnRectangleIcon className="h-6 w-6" />
-                <span className="hidden md:block text-sm font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <Navigation />
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
@@ -271,7 +197,7 @@ const DashboardPage = () => {
             </div>
           </div>
         )}
-      </nav>
+      
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -361,7 +287,7 @@ const DashboardPage = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-900">Recent Applications</h2>
                   <Link 
-                    to="/applications/new"
+                    to="/applications"
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <PlusIcon className="h-5 w-5" />
@@ -490,7 +416,7 @@ const DashboardPage = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <Link 
-                  to="/applications/new"
+                  to="/applications"
                   className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                 >
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
