@@ -26,6 +26,7 @@ const KanbanColumn = ({ status, title, applications = [], color }) => {
   );
 };
 import React, { useState, useEffect } from 'react';
+import InterviewFormModal from '../components/InterviewFormModal';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import useAuthStore from '../store/authStore';
@@ -119,6 +120,8 @@ const KanbanPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [interviewAppId, setInterviewAppId] = useState(null);
 
   useEffect(() => {
     fetchApplications();
@@ -186,12 +189,10 @@ const KanbanPage = () => {
 
     // Find destination column
     let destColumn = null;
-    
     // Check if dropped on a column droppable area
     if (over.id.startsWith('column-')) {
       destColumn = over.id.replace('column-', '');
     }
-    
     // If not, check if dropped on another card
     if (!destColumn) {
       const targetApp = applications.find(app => app.id === over.id);
@@ -201,12 +202,18 @@ const KanbanPage = () => {
     }
 
     if (destColumn && draggedApp.status !== destColumn) {
+      // If moving to Interview, show modal instead of direct update
+      if (destColumn === 'Interview') {
+        setInterviewAppId(draggedApp.id);
+        setShowInterviewModal(true);
+        setActiveId(null);
+        return;
+      }
       // Optimistically update UI
       const updatedApps = applications.map(app =>
         app.id === draggedApp.id ? { ...app, status: destColumn } : app
       );
       setApplications(updatedApps);
-
       try {
         // Update in backend
         await applicationService.updateApplication(draggedApp.id, {
@@ -222,7 +229,6 @@ const KanbanPage = () => {
         setTimeout(() => setError(null), 3000);
       }
     }
-
     setActiveId(null);
   };
 
@@ -418,6 +424,12 @@ const KanbanPage = () => {
         ) : (
           <>
         {/* Kanban Board */}
+        <InterviewFormModal
+          show={showInterviewModal}
+          onClose={() => { setShowInterviewModal(false); setInterviewAppId(null); }}
+          applicationId={interviewAppId}
+          onSuccess={fetchApplications}
+        />
 
         <DndContext
           sensors={sensors}
