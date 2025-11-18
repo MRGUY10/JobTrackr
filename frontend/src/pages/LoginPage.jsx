@@ -23,9 +23,13 @@ const LoginPage = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    // Clear error when user starts typing
+    // Clear field-specific error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    // Only clear submit error if user interacts with email or password
+    if ((name === 'email' || name === 'password') && errors.submit) {
+      setErrors(prev => ({ ...prev, submit: '' }));
     }
   };
 
@@ -50,18 +54,11 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     setIsLoading(true);
-    
     try {
-      console.log('Attempting login with:', formData.email);
       const result = await login(formData);
-      console.log('Login result:', result);
-      
       if (result.success) {
-        console.log('Login successful, navigating to dashboard');
         // Redirect admin users to admin dashboard, regular users to user dashboard
         if (result.data.user.role === 'admin') {
           navigate('/admin');
@@ -69,14 +66,13 @@ const LoginPage = () => {
           navigate('/dashboard');
         }
       } else {
-        console.error('Login failed:', result.error);
-        setErrors({ submit: result.error });
+        setErrors(prev => ({ ...prev, submit: result.error }));
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setErrors({ 
-        submit: error.response?.data?.message || 'Invalid credentials. Please try again.' 
-      });
+      setErrors(prev => ({
+        ...prev,
+        submit: error.response?.data?.message || 'Invalid credentials. Please try again.'
+      }));
     } finally {
       setIsLoading(false);
     }
